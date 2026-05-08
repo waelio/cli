@@ -1,0 +1,52 @@
+{
+    "name": "waelio-cli",
+    "version": "0.1.0",
+    "private": true,
+    "description": "CLI for building the waelio/siteforge website",
+    "type": "module",
+    "bin": {
+        "waelio": "./dist/index.js"
+    },
+    "files": [
+        "dist",
+        "ui/dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "build:cli": "tsc -p tsconfig.json",
+        "build:ui": "vite build",
+        "build": "npm run build:cli && npm run build:ui",
+        "dev:cli": "tsx src/index.ts",
+        "dev:server": "tsx src/server.ts",
+        "dev:ui": "vite",
+        "dev": "concurrently -k -n API,UI -c magenta,cyan \"npm:dev:server\" \"npm:dev:ui\"",
+        "start": "node dist/server.js",
+        "typecheck": "tsc -p tsconfig.json --noEmit && vue-tsc -p tsconfig.ui.json --noEmit",
+        "test": "tsx --test src/**/*.test.ts",
+        "check": "npm run typecheck && npm run test"
+    },
+    "keywords": [
+        "cli",
+        "siteforge",
+        "vite",
+        "typescript"
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "commander": "^14.0.0",
+        "vue": "^3.5.13"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.2.1",
+        "@types/node": "^24.0.0",
+        "concurrently": "^9.1.2",
+        "tsx": "^4.20.0",
+        "typescript": "^5.8.3",
+        "vite": "^5.4.21",
+        "vue-tsc": "^2.2.0"
+    }
+}
