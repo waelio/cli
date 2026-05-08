@@ -3,6 +3,7 @@
 import { Command } from "commander";
 
 import { DEFAULT_SITEFORGE_REPO, runBuild, runDoctor } from "./siteforge.js";
+import { scaffold } from "./scaffold.js";
 
 async function main(): Promise<void> {
     const program = new Command();
@@ -58,6 +59,29 @@ async function main(): Promise<void> {
 
             await startServer({ port });
         });
+
+    program
+        .command("scaffold <blueprint>")
+        .description(
+            "Scaffold a Next.js + NestJS project from a siteforge blueprint JSON",
+        )
+        .option("--out <dir>", "output root (default: siteforge/sites)")
+        .option("--no-git", "skip git init / initial commit")
+        .action(
+            async (
+                blueprint: string,
+                options: { out?: string; git: boolean },
+            ) => {
+                const result = await scaffold({
+                    blueprintPath: blueprint,
+                    outRoot: options.out,
+                    initGit: options.git,
+                });
+                console.log(
+                    `Scaffolded "${result.slug}" (${result.pageCount} pages) at:\n  ${result.outDir}`,
+                );
+            },
+        );
 
     await program.parseAsync(process.argv);
 }
