@@ -89,6 +89,27 @@ node dist/index.js ui --port 3000
 - `waelio/utils` — shared utilities and UI-friendly helpers
 - `waelio/waelio-messaging` — future real-time collaboration ideas
 
+## Local repository discovery
+
+The UI and API now scan your local GitHub workspace and build a sanitized repository index.
+
+- default local root: `/Users/waelio/Code/GitHub`
+- override with `WAELIO_LOCAL_ROOT`
+- top-level repositories are included
+- nested build/checkouts such as `.build`, `node_modules`, `dist`, and `.git` internals are excluded from discovery
+
+### Local repo API
+
+- `GET /api/local-repos` — returns the compiled local repository list
+- `GET /api/local-repos/tree?repoId=...&path=...` — returns a sanitized physical folder listing for a selected local repository
+
+### Safety rules
+
+- repository IDs map to scanned local repos only
+- folder browsing is restricted to paths inside the selected repository
+- path traversal such as `..` is rejected
+- `.git` directories are hidden from the served listing
+
 ## Notes
 
 - The default repository URL is `https://github.com/waelio/siteforge.git`.
