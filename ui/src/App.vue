@@ -168,11 +168,23 @@ function isChecked(groupKey: string, item: string): boolean {
 const blueprint = ref<string>("");
 const showPreview = ref(false);
 
+const SELECTION_KEYS: Record<string, string> = {
+  pages: "selectedPages",
+  features: "selectedFeatures",
+  integrations: "selectedIntegrations",
+  locales: "selectedLocales",
+  roles: "selectedRoles",
+  brandTones: "selectedBrandTones",
+  visualStyles: "selectedVisualStyles",
+  contentModels: "selectedContentModels",
+  seoFocuses: "selectedSEOFocuses",
+};
+
 function generateBlueprint(): void {
   const selections: Record<string, string[]> = {};
   for (const g of groups) {
-    selections[`selected${g.key.charAt(0).toUpperCase() + g.key.slice(1)}`] =
-      Array.from(selected[g.key] ?? []);
+    const key = SELECTION_KEYS[g.key] ?? g.key;
+    selections[key] = Array.from(selected[g.key] ?? []);
   }
   const out = {
     $schema: "https://waelio.dev/schemas/blueprint/v1.json",
@@ -261,6 +273,17 @@ function downloadBuildResult(): void {
   URL.revokeObjectURL(url);
 }
 
+function resetAll(): void {
+  for (const g of groups) {
+    selected[g.key] = new Set<string>(g.required ?? []);
+  }
+  blueprint.value = "";
+  showPreview.value = false;
+  buildLog.value = [];
+  buildResult.value = "";
+  buildStatus.value = "idle";
+}
+
 onMounted(() => {
   const saved = localStorage.getItem("waelio-theme") as Theme | null;
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -315,6 +338,7 @@ onMounted(() => {
       <button type="button" class="btn" @click="generateBlueprint">
         Generate
       </button>
+      <button type="button" class="btn" @click="resetAll">Reset</button>
       <button
         type="button"
         class="btn"
