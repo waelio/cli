@@ -1,28 +1,25 @@
 :root {
   color-scheme: light;
-  background: white screen#000000;
+  --bg: #ffffff;
+  --fg: #000000;
 }
-
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --fg: #ffffff;
+}
 * {
   box-sizing: border-box;
 }
-
 html,
 body,
 #app {
-  width: 100%;
-  min-height: 100%;
   margin: 0;
-  background: #000000;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
 }
-
 body {
   min-height: 100vh;
-  overflow: hidden;
-}
-
-.blank-screen {
-  width: 100vw;
-  height: 100vh;
-  background: #000000;
+  font-family: system-ui, -apple-system, sans-serif;
 }
