@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+} from "vue";
 
 interface ToolCheckResult {
   tool: string;
@@ -129,23 +136,36 @@ const statusText = computed(() => {
 
 const statusClass = computed(() => `status-${buildState.value}`);
 const selectedLocalRepository = computed(
-  () => localRepositories.value.find((repository) => repository.id === selectedLocalRepoId.value) ?? null,
+  () =>
+    localRepositories.value.find(
+      (repository) => repository.id === selectedLocalRepoId.value,
+    ) ?? null,
 );
 const localRepoCount = computed(() => localRepositories.value.length);
 const canPreview = computed(() => !isLoadingPlan.value && !isBuilding.value);
-const canCheckTools = computed(() => !isCheckingTools.value && !isBuilding.value);
+const canCheckTools = computed(
+  () => !isCheckingTools.value && !isBuilding.value,
+);
 const canBuild = computed(() => !isBuilding.value);
-const canBrowseLocalParent = computed(() => Boolean(localDirectory.value?.requestedPath));
+const canBrowseLocalParent = computed(() =>
+  Boolean(localDirectory.value?.requestedPath),
+);
 const localBreadcrumbs = computed(() => {
-  if (!localDirectory.value || localDirectory.value.requestedPath.length === 0) {
+  if (
+    !localDirectory.value ||
+    localDirectory.value.requestedPath.length === 0
+  ) {
     return [] as Array<{ label: string; path: string }>;
   }
 
-  const segments = localDirectory.value.requestedPath.split("/").filter(Boolean);
+  const segments = localDirectory.value.requestedPath
+    .split("/")
+    .filter(Boolean);
   let currentPath = "";
 
   return segments.map((segment) => {
-    currentPath = currentPath.length > 0 ? `${currentPath}/${segment}` : segment;
+    currentPath =
+      currentPath.length > 0 ? `${currentPath}/${segment}` : segment;
 
     return {
       label: segment,
@@ -263,11 +283,18 @@ async function loadLocalRepositories(): Promise<void> {
     const payload = (await response.json()) as LocalRepositoriesResponse;
     localReposRoot.value = payload.root;
     localRepositories.value = payload.repositories;
-    addLog("system", `Compiled ${payload.count} local repositories from ${payload.root}.`);
+    addLog(
+      "system",
+      `Compiled ${payload.count} local repositories from ${payload.root}.`,
+    );
 
     const preferredRepository =
-      payload.repositories.find((repository) => repository.id === selectedLocalRepoId.value) ??
-      payload.repositories.find((repository) => repository.relativePath === "waelio/cli") ??
+      payload.repositories.find(
+        (repository) => repository.id === selectedLocalRepoId.value,
+      ) ??
+      payload.repositories.find(
+        (repository) => repository.relativePath === "waelio/cli",
+      ) ??
       payload.repositories[0];
 
     if (!preferredRepository) {
@@ -277,7 +304,9 @@ async function loadLocalRepositories(): Promise<void> {
     }
 
     const requestedPath =
-      localDirectory.value?.repo.id === preferredRepository.id ? localDirectory.value.requestedPath : "";
+      localDirectory.value?.repo.id === preferredRepository.id
+        ? localDirectory.value.requestedPath
+        : "";
 
     await loadLocalDirectory(preferredRepository.id, requestedPath);
   } catch (error) {
@@ -287,7 +316,10 @@ async function loadLocalRepositories(): Promise<void> {
   }
 }
 
-async function loadLocalDirectory(repositoryId: string, requestedPath = ""): Promise<void> {
+async function loadLocalDirectory(
+  repositoryId: string,
+  requestedPath = "",
+): Promise<void> {
   selectedLocalRepoId.value = repositoryId;
   isLoadingLocalDirectory.value = true;
 
@@ -298,7 +330,9 @@ async function loadLocalDirectory(repositoryId: string, requestedPath = ""): Pro
       searchParams.set("path", requestedPath);
     }
 
-    const response = await fetch(`/api/local-repos/tree?${searchParams.toString()}`);
+    const response = await fetch(
+      `/api/local-repos/tree?${searchParams.toString()}`,
+    );
 
     if (!response.ok) {
       throw new Error(`Folder browser request failed (${response.status})`);
@@ -321,7 +355,9 @@ function browseLocalParent(): void {
     return;
   }
 
-  const segments = localDirectory.value.requestedPath.split("/").filter(Boolean);
+  const segments = localDirectory.value.requestedPath
+    .split("/")
+    .filter(Boolean);
   segments.pop();
   void loadLocalDirectory(localDirectory.value.repo.id, segments.join("/"));
 }
@@ -350,7 +386,10 @@ function handleLocalEntryClick(entry: LocalDirectoryEntry): void {
 function useLocalRepositoryAsSource(repository: LocalRepositorySummary): void {
   form.source = repository.absolutePath;
   form.workdir = "";
-  addLog("system", `Using local repository as source: ${repository.absolutePath}`);
+  addLog(
+    "system",
+    `Using local repository as source: ${repository.absolutePath}`,
+  );
 }
 
 function useLocalDirectoryAsSource(): void {
@@ -360,7 +399,10 @@ function useLocalDirectoryAsSource(): void {
 
   form.source = localDirectory.value.absolutePath;
   form.workdir = "";
-  addLog("system", `Using local folder as source: ${localDirectory.value.absolutePath}`);
+  addLog(
+    "system",
+    `Using local folder as source: ${localDirectory.value.absolutePath}`,
+  );
 }
 
 async function runDoctor(): Promise<void> {
@@ -438,7 +480,11 @@ function startBuild(): void {
   });
 
   stream.addEventListener("step", (event) => {
-    const payload = parseEventPayload<{ step: BuildStep; index: number; total: number }>(event);
+    const payload = parseEventPayload<{
+      step: BuildStep;
+      index: number;
+      total: number;
+    }>(event);
     addLog("step", `${payload.index}/${payload.total}: ${payload.step.title}`);
   });
 
@@ -464,7 +510,10 @@ function startBuild(): void {
     if (!payload.plan.usesExistingSource) {
       form.source = payload.plan.projectDir;
       form.workdir = "";
-      addLog("system", "The last working directory has been promoted to source for faster reruns.");
+      addLog(
+        "system",
+        "The last working directory has been promoted to source for faster reruns.",
+      );
     }
 
     closeBuildStream();
@@ -527,8 +576,10 @@ onBeforeUnmount(() => {
         <p class="eyebrow">waelio build control center</p>
         <h1>Build `siteforge` from a proper screen UI</h1>
         <p class="hero-copy">
-          Suggested stack: <strong>Vite + TypeScript + Vue</strong>. It is fast, typed, and fits the waelio ecosystem nicely.
-          The UI now also compiles a local repo list from your GitHub folder and exposes a sanitized physical folder browser.
+          Suggested stack: <strong>Vite + TypeScript + Vue</strong>. It is fast,
+          typed, and fits the waelio ecosystem nicely. The UI now also compiles
+          a local repo list from your GitHub folder and exposes a sanitized
+          physical folder browser.
         </p>
       </div>
 
@@ -538,7 +589,11 @@ onBeforeUnmount(() => {
           <p class="status-label">Status</p>
           <strong>{{ statusText }}</strong>
           <p class="status-copy">
-            {{ isBuilding ? "Streaming live build output" : "Ready for local browsing, plan, doctor, or build" }}
+            {{
+              isBuilding
+                ? "Streaming live build output"
+                : "Ready for local browsing, plan, doctor, or build"
+            }}
           </p>
         </div>
       </div>
@@ -589,13 +644,21 @@ onBeforeUnmount(() => {
             <h2>Compiled local repo list</h2>
           </div>
 
-          <button type="button" class="button ghost slim" :disabled="isLoadingLocalRepos" @click="loadLocalRepositories">
+          <button
+            type="button"
+            class="button ghost slim"
+            :disabled="isLoadingLocalRepos"
+            @click="loadLocalRepositories"
+          >
             {{ isLoadingLocalRepos ? "Refreshing…" : "Refresh" }}
           </button>
         </div>
 
         <p class="field-hint">
-          Scanning <code>{{ localReposRoot || fallbackLocalReposRoot }}</code> and surfacing top-level repositories only, so nested build checkouts do not pollute the list.
+          Scanning
+          <code>{{ localReposRoot || fallbackLocalReposRoot }}</code> and
+          surfacing top-level repositories only, so nested build checkouts do
+          not pollute the list.
         </p>
 
         <div class="summary-grid compact-grid">
@@ -609,7 +672,9 @@ onBeforeUnmount(() => {
           </div>
           <div class="summary-card">
             <span>Selected repo</span>
-            <strong>{{ selectedLocalRepository?.relativePath ?? "None yet" }}</strong>
+            <strong>{{
+              selectedLocalRepository?.relativePath ?? "None yet"
+            }}</strong>
           </div>
         </div>
 
@@ -622,16 +687,26 @@ onBeforeUnmount(() => {
             v-for="repository in localRepositories"
             :key="repository.id"
             class="local-repo-card"
-            :class="{ 'local-repo-active': repository.id === selectedLocalRepoId }"
+            :class="{
+              'local-repo-active': repository.id === selectedLocalRepoId,
+            }"
           >
-            <button type="button" class="local-repo-select" @click="selectLocalRepository(repository.id)">
+            <button
+              type="button"
+              class="local-repo-select"
+              @click="selectLocalRepository(repository.id)"
+            >
               <span class="local-repo-owner">{{ repository.owner }}</span>
               <strong>{{ repository.name }}</strong>
               <p>{{ repository.relativePath }}</p>
               <small>{{ repository.absolutePath }}</small>
             </button>
 
-            <button type="button" class="button ghost slim" @click="useLocalRepositoryAsSource(repository)">
+            <button
+              type="button"
+              class="button ghost slim"
+              @click="useLocalRepositoryAsSource(repository)"
+            >
               Use as source
             </button>
           </div>
@@ -695,20 +770,33 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="breadcrumb-row">
-            <button type="button" class="crumb-button" @click="openLocalBreadcrumb("")">
+            <button
+              type="button"
+              class="crumb-button"
+              @click="openLocalBreadcrumb('')"
+            >
               {{ localDirectory.repo.name }}
             </button>
             <template v-for="crumb in localBreadcrumbs" :key="crumb.path">
               <span class="crumb-separator">/</span>
-              <button type="button" class="crumb-button" @click="openLocalBreadcrumb(crumb.path)">
+              <button
+                type="button"
+                class="crumb-button"
+                @click="openLocalBreadcrumb(crumb.path)"
+              >
                 {{ crumb.label }}
               </button>
             </template>
           </div>
 
-          <div v-if="isLoadingLocalDirectory" class="empty-state">Loading folder…</div>
+          <div v-if="isLoadingLocalDirectory" class="empty-state">
+            Loading folder…
+          </div>
 
-          <div v-else-if="localDirectory.entries.length === 0" class="empty-state">
+          <div
+            v-else-if="localDirectory.entries.length === 0"
+            class="empty-state"
+          >
             This folder is empty.
           </div>
 
@@ -718,10 +806,16 @@ onBeforeUnmount(() => {
               :key="entry.relativePath"
               type="button"
               class="directory-entry"
-              :class="entry.kind === 'directory' ? 'directory-entry-dir' : 'directory-entry-file'"
+              :class="
+                entry.kind === 'directory'
+                  ? 'directory-entry-dir'
+                  : 'directory-entry-file'
+              "
               @click="handleLocalEntryClick(entry)"
             >
-              <span class="directory-icon">{{ entry.kind === "directory" ? "📁" : "📄" }}</span>
+              <span class="directory-icon">{{
+                entry.kind === "directory" ? "📁" : "📄"
+              }}</span>
               <div class="directory-entry-body">
                 <strong>{{ entry.name }}</strong>
                 <p>{{ entry.relativePath }}</p>
@@ -745,22 +839,38 @@ onBeforeUnmount(() => {
         <form class="form-grid" @submit.prevent="startBuild">
           <label>
             <span>Repository URL</span>
-            <input v-model="form.repoUrl" type="url" placeholder="https://github.com/waelio/siteforge.git" />
+            <input
+              v-model="form.repoUrl"
+              type="url"
+              placeholder="https://github.com/waelio/siteforge.git"
+            />
           </label>
 
           <label>
             <span>Ref</span>
-            <input v-model="form.ref" type="text" placeholder="main, master, v1.2.3, or commit SHA" />
+            <input
+              v-model="form.ref"
+              type="text"
+              placeholder="main, master, v1.2.3, or commit SHA"
+            />
           </label>
 
           <label>
             <span>Local source path</span>
-            <input v-model="form.source" type="text" placeholder="../siteforge" />
+            <input
+              v-model="form.source"
+              type="text"
+              placeholder="../siteforge"
+            />
           </label>
 
           <label>
             <span>Workdir</span>
-            <input v-model="form.workdir" type="text" placeholder="./tmp/siteforge-ui" />
+            <input
+              v-model="form.workdir"
+              type="text"
+              placeholder="./tmp/siteforge-ui"
+            />
           </label>
 
           <label class="toggle-row">
@@ -769,14 +879,26 @@ onBeforeUnmount(() => {
           </label>
 
           <p class="field-hint">
-            Pick a local repo or folder above to populate <code>source</code>. If <code>source</code> is set, the existing checkout is used and <code>workdir</code> is ignored.
+            Pick a local repo or folder above to populate <code>source</code>.
+            If <code>source</code> is set, the existing checkout is used and
+            <code>workdir</code> is ignored.
           </p>
 
           <div class="button-row">
-            <button type="button" class="button ghost" :disabled="!canCheckTools" @click="runDoctor">
+            <button
+              type="button"
+              class="button ghost"
+              :disabled="!canCheckTools"
+              @click="runDoctor"
+            >
               {{ isCheckingTools ? "Checking…" : "Check tools" }}
             </button>
-            <button type="button" class="button ghost" :disabled="!canPreview" @click="previewPlan">
+            <button
+              type="button"
+              class="button ghost"
+              :disabled="!canPreview"
+              @click="previewPlan"
+            >
               {{ isLoadingPlan ? "Planning…" : "Preview plan" }}
             </button>
             <button type="submit" class="button primary" :disabled="!canBuild">
@@ -825,7 +947,8 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-if="!plan" class="empty-state">
-          Preview the build plan to see clone, install, and build steps before execution.
+          Preview the build plan to see clone, install, and build steps before
+          execution.
         </div>
 
         <template v-else>
@@ -845,7 +968,10 @@ onBeforeUnmount(() => {
           </div>
 
           <ol class="step-list">
-            <li v-for="step in plan.steps" :key="`${step.title}-${step.command}`">
+            <li
+              v-for="step in plan.steps"
+              :key="`${step.title}-${step.command}`"
+            >
               <strong>{{ step.title }}</strong>
               <span>{{ step.command }} {{ step.args.join(" ") }}</span>
               <small v-if="step.cwd">cwd: {{ step.cwd }}</small>
@@ -862,7 +988,9 @@ onBeforeUnmount(() => {
             <p class="eyebrow">logs</p>
             <h2>Live build output</h2>
           </div>
-          <button type="button" class="button ghost slim" @click="resetLogs">Clear</button>
+          <button type="button" class="button ghost slim" @click="resetLogs">
+            Clear
+          </button>
         </div>
 
         <div ref="logPanel" class="log-console">
@@ -870,7 +998,12 @@ onBeforeUnmount(() => {
             Start a build to stream output here in real time.
           </div>
 
-          <div v-for="entry in logs" :key="entry.id" class="log-line" :class="`log-${entry.kind}`">
+          <div
+            v-for="entry in logs"
+            :key="entry.id"
+            class="log-line"
+            :class="`log-${entry.kind}`"
+          >
             <span class="log-time">{{ entry.timestamp }}</span>
             <span class="log-text">{{ entry.text }}</span>
           </div>
