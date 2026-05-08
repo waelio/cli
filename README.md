@@ -71,11 +71,13 @@ node dist/index.js doctor
 node dist/index.js build
 ```
 
-### Preview the build plan without executing it
+Options:
 
-```sh
-node dist/index.js build --dry-run
-```
+- `--repo <url>` — repository URL to build (defaults to `waelio/siteforge`)
+- `--ref <ref>` — branch, tag, or commit to checkout before building
+- `--source <path>` — use an existing local checkout instead of cloning
+- `--workdir <path>` — directory to clone into when `--source` is not provided
+- `--dry-run` — print the build plan without executing it
 
 ### Start the local UI/API server from the CLI
 
@@ -83,11 +85,47 @@ node dist/index.js build --dry-run
 node dist/index.js ui --port 3000
 ```
 
+### Scaffold a Next.js + NestJS project from a blueprint
+
+```sh
+node dist/index.js scaffold ./blueprint.json --out ./sites
+```
+
+Options:
+
+- `--out <dir>` — output root (defaults to `siteforge/sites`)
+- `--no-git` — skip `git init` and the initial commit
+
+The blueprint is a JSON file produced by siteforge that describes the project
+name, slug, and selections (pages, features, integrations, locales, roles,
+brand tones, visual styles, content models, and SEO focuses). The scaffolder
+generates a frontend (Next.js) and backend (NestJS) workspace from those
+selections.
+
 ## Helper repos surfaced in the UI
 
 - `waelio/ustore` — storage and state patterns
 - `waelio/utils` — shared utilities and UI-friendly helpers
 - `waelio/waelio-messaging` — future real-time collaboration ideas
+
+## Localization
+
+UI strings are stored as per-locale JSON files under `src/locals/<lang>/<lang>.json`,
+with a top-level `src/locals/manifest.json` summarizing the set. The following
+locales ship by default:
+
+`ar`, `de`, `en`, `es`, `fr`, `he`, `id`, `it`, `ru`, `sv`, `tr`, `zh`
+
+RTL locales (`ar`, `he`) should be considered when adding or editing UI copy.
+
+## Scripts
+
+- `npm run dev` — run the API server and Vite UI together
+- `npm run build` — build the CLI (`tsc`) and the UI (`vite build`)
+- `npm start` — run the built server (`dist/server.js`)
+- `npm run typecheck` — `tsc --noEmit` plus `vue-tsc` for the UI
+- `npm test` — run `*.test.ts` via `tsx --test`
+- `npm run check` — typecheck + tests
 
 ## Local repository discovery
 

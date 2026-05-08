@@ -1,11 +1,11 @@
 import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-interface BlueprintSelections {
+export interface BlueprintSelections {
     selectedPages?: string[];
     selectedFeatures?: string[];
     selectedIntegrations?: string[];
@@ -17,7 +17,7 @@ interface BlueprintSelections {
     selectedSEOFocuses?: string[];
 }
 
-interface Blueprint {
+export interface Blueprint {
     id?: string;
     createdAt?: string;
     projectName?: string;
@@ -25,8 +25,14 @@ interface Blueprint {
     selections?: BlueprintSelections;
 }
 
-interface ScaffoldOptions {
+export interface ScaffoldOptions {
     blueprintPath: string;
+    outRoot?: string;
+    initGit?: boolean;
+}
+
+export interface ScaffoldFromBlueprintOptions {
+    blueprint: Blueprint;
     outRoot?: string;
     initGit?: boolean;
 }
@@ -303,14 +309,56 @@ export interface ScaffoldResult {
     pageCount: number;
 }
 
+async function pathExists(target: string): Promise<boolean> {
+    try {
+        await stat(target);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function uniqueOutDir(outRoot: string, slug: string): Promise<string> {
+    const base = path.join(outRoot, slug);
+    if (!(await pathExists(base))) return base;
+    for (let i = 2; i < 1000; i++) {
+        const candidate = path.join(outRoot, `${slug}-${i}`);
+        if (!(await pathExists(candidate))) return candidate;
+    }
+    throw new Error(`Unable to find a free output directory for slug "${slug}"`);
+}
+
+export async function scaffoldFromBlueprint(
+    options: ScaffoldFromBlueprintOptions,
+): Promise<ScaffoldResult> {
+    const blueprint = options.blueprint;
+    const projectName = blueprint.projectName?.trim() || "Siteforge Project";
+    const slugBase = slugify(blueprint.slug || projectName);
+    const outRoot = options.outRoot || DEFAULT_OUT_ROOT;
+    const outDir = await uniqueOutDir(outRoot, slugBase);
+    const slug = path.basename(outDir);
+
+    return writeScaffold(blueprint, projectName, slug, outDir, options.initGit);
+}
+
 export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult> {
     const raw = await readFile(options.blueprintPath, "utf8");
     const blueprint = JSON.parse(raw) as Blueprint;
 
-    const projectName = blueprint.projectName?.trim() || "Siteforge Project";
-    const slug = slugify(blueprint.slug || projectName);
-    const outRoot = options.outRoot || DEFAULT_OUT_ROOT;
-    const outDir = path.join(outRoot, slug);
+    return scaffoldFromBlueprint({
+        blueprint,
+        outRoot: options.outRoot,
+        initGit: options.initGit,
+    });
+}
+
+async function writeScaffold(
+    blueprint: Blueprint,
+    projectName: string,
+    slug: string,
+    outDir: string,
+    initGit: boolean | undefined,
+): Promise<ScaffoldResult> {
 
     const sel = blueprint.selections ?? {};
     const pageNames = Array.from(
@@ -388,7 +436,7 @@ export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult
         JSON.stringify(blueprint, null, 2),
     );
 
-    if (options.initGit !== false) {
+    if (initGit !== false) {
         try {
             await execFileAsync("git", ["init", "-q"], { cwd: outDir });
             await execFileAsync("git", ["add", "."], { cwd: outDir });

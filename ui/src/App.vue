@@ -167,6 +167,16 @@ function isChecked(groupKey: string, item: string): boolean {
 
 const blueprint = ref<string>("");
 const showPreview = ref(false);
+const projectName = ref<string>("");
+
+function slugify(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "site"
+  );
+}
 
 const SELECTION_KEYS: Record<string, string> = {
   pages: "selectedPages",
@@ -186,6 +196,7 @@ function generateBlueprint(): void {
     const key = SELECTION_KEYS[g.key] ?? g.key;
     selections[key] = Array.from(selected[g.key] ?? []);
   }
+  const name = projectName.value.trim();
   const out = {
     $schema: "https://waelio.dev/schemas/blueprint/v1.json",
     generator: {
@@ -195,6 +206,8 @@ function generateBlueprint(): void {
     },
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
+    projectName: name || "Siteforge Project",
+    slug: slugify(name || "Siteforge Project"),
     selections,
   };
   blueprint.value = JSON.stringify(out, null, 2);
@@ -221,6 +234,9 @@ const SITEFORGE_URL =
   (import.meta.env.VITE_SITEFORGE_URL as string | undefined) ??
   "https://siteforge.waelio.com";
 
+const SCAFFOLD_URL =
+  (import.meta.env.VITE_SCAFFOLD_URL as string | undefined) ?? "/api/scaffold";
+
 const buildStatus = ref<
   "idle" | "connecting" | "sending" | "running" | "done" | "error"
 >("idle");
@@ -232,19 +248,25 @@ function logBuild(line: string): void {
 }
 
 async function buildSite(): Promise<void> {
-  if (!blueprint.value) generateBlueprint();
+  if (!projectName.value.trim()) {
+    logBuild("error: project name is required");
+    buildStatus.value = "error";
+    return;
+  }
+  generateBlueprint();
   buildLog.value = [];
   buildResult.value = "";
   buildStatus.value = "sending";
 
-  const url = `${SITEFORGE_URL.replace(/\/$/, "")}/api/generate`;
-  logBuild(`POST ${url}`);
+  logBuild(`POST ${SCAFFOLD_URL}`);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(SCAFFOLD_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: blueprint.value,
+      body: JSON.stringify({
+        blueprint: JSON.parse(blueprint.value),
+      }),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -255,7 +277,7 @@ async function buildSite(): Promise<void> {
     const data = await res.json();
     buildResult.value = JSON.stringify(data, null, 2);
     buildStatus.value = "done";
-    logBuild("build completed");
+    logBuild(`scaffolded "${data.slug}" at ${data.outDir}`);
   } catch (err) {
     logBuild(`network error: ${(err as Error).message}`);
     buildStatus.value = "error";
@@ -277,6 +299,7 @@ function resetAll(): void {
   for (const g of groups) {
     selected[g.key] = new Set<string>(g.required ?? []);
   }
+  projectName.value = "";
   blueprint.value = "";
   showPreview.value = false;
   buildLog.value = [];
@@ -307,6 +330,28 @@ onMounted(() => {
   </header>
 
   <main class="app-main">
+    <section class="group" aria-labelledby="group-project">
+      <h2 id="group-project" class="group-title">Project</h2>
+      <label class="check" style="flex-direction: column; align-items: stretch">
+        <span>Name</span>
+        <input
+          v-model="projectName"
+          type="text"
+          placeholder="Acme Dental"
+          autocomplete="off"
+          style="
+            margin-top: 0.4rem;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid var(--fg);
+            border-radius: 0.375rem;
+            background: transparent;
+            color: var(--fg);
+            font: inherit;
+          "
+        />
+      </label>
+    </section>
+
     <section
       v-for="group in groups"
       :key="group.key"
@@ -359,6 +404,7 @@ onMounted(() => {
         type="button"
         class="btn"
         :disabled="
+          !projectName.trim() ||
           buildStatus === 'connecting' ||
           buildStatus === 'sending' ||
           buildStatus === 'running'

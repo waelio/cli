@@ -17,6 +17,7 @@ import {
     listLocalRepositoryDirectory,
     scanLocalRepositories,
 } from "./localRepos.js";
+import { scaffoldFromBlueprint, type Blueprint } from "./scaffold.js";
 
 interface HelperRepository {
     name: string;
@@ -184,6 +185,40 @@ async function handleApiRequest(
             plan,
             formatted: formatBuildPlan(plan),
         });
+        return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/scaffold") {
+        const payload = await readJsonBody(request);
+        if (!isRecord(payload)) {
+            sendJson(response, 400, { error: "Request body must be a JSON object." });
+            return;
+        }
+
+        const blueprint = (
+            isRecord(payload.blueprint) ? payload.blueprint : payload
+        ) as Blueprint;
+
+        if (!blueprint.projectName || !blueprint.projectName.trim()) {
+            sendJson(response, 400, {
+                error: "Blueprint must include a non-empty projectName.",
+            });
+            return;
+        }
+
+        const outRoot = normalizeString(payload.outRoot);
+        const initGit = payload.initGit !== false;
+
+        try {
+            const result = await scaffoldFromBlueprint({
+                blueprint,
+                outRoot,
+                initGit,
+            });
+            sendJson(response, 200, result);
+        } catch (error) {
+            sendJson(response, 500, { error: toErrorMessage(error) });
+        }
         return;
     }
 
