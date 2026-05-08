@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { io, Socket } from "socket.io-client";
+import { onMounted, reactive, ref } from "vue";
 
 type Theme = "light" | "dark";
 
@@ -206,85 +205,49 @@ function downloadBlueprint(): void {
   URL.revokeObjectURL(url);
 }
 
-const HUB_URL =
-  (import.meta.env.VITE_WAELIO_HUB_URL as string | undefined) ??
-  "http://localhost:8080";
-const HUB_TOKEN =
-  (import.meta.env.VITE_WAELIO_HUB_TOKEN as string | undefined) ?? "";
+const SITEFORGE_URL =
+  (import.meta.env.VITE_SITEFORGE_URL as string | undefined) ??
+  "https://siteforge.waelio.com";
 
 const buildStatus = ref<
   "idle" | "connecting" | "sending" | "running" | "done" | "error"
 >("idle");
 const buildLog = ref<string[]>([]);
 const buildResult = ref<string>("");
-let socket: Socket | null = null;
 
 function logBuild(line: string): void {
   buildLog.value.push(`[${new Date().toLocaleTimeString()}] ${line}`);
 }
 
-function buildSite(): void {
+async function buildSite(): Promise<void> {
   if (!blueprint.value) generateBlueprint();
   buildLog.value = [];
   buildResult.value = "";
-  buildStatus.value = "connecting";
+  buildStatus.value = "sending";
 
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
+  const url = `${SITEFORGE_URL.replace(/\/$/, "")}/api/generate`;
+  logBuild(`POST ${url}`);
 
-  socket = io(HUB_URL, {
-    transports: ["websocket"],
-    auth: HUB_TOKEN ? { token: HUB_TOKEN } : undefined,
-    reconnection: false,
-  });
-
-  const requestId = crypto.randomUUID();
-  const payload = JSON.parse(blueprint.value) as Record<string, unknown>;
-  payload["requestId"] = requestId;
-
-  socket.on("connect", () => {
-    logBuild(`connected to hub: ${HUB_URL}`);
-    buildStatus.value = "sending";
-    socket?.emit(
-      "siteforge:build",
-      payload,
-      (ack: { ok?: boolean; error?: string }) => {
-        if (ack?.ok === false) {
-          logBuild(`hub rejected: ${ack.error ?? "unknown"}`);
-          buildStatus.value = "error";
-          return;
-        }
-        logBuild(`build queued: ${requestId}`);
-        buildStatus.value = "running";
-      },
-    );
-  });
-
-  socket.on(`siteforge:progress:${requestId}`, (msg: { line?: string }) => {
-    if (msg?.line) logBuild(msg.line);
-  });
-
-  socket.on(`siteforge:result:${requestId}`, (result: unknown) => {
-    buildResult.value = JSON.stringify(result, null, 2);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: blueprint.value,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      logBuild(`error: ${res.status} ${text}`);
+      buildStatus.value = "error";
+      return;
+    }
+    const data = await res.json();
+    buildResult.value = JSON.stringify(data, null, 2);
     buildStatus.value = "done";
     logBuild("build completed");
-    socket?.disconnect();
-    socket = null;
-  });
-
-  socket.on(`siteforge:error:${requestId}`, (err: { message?: string }) => {
-    logBuild(`error: ${err?.message ?? "unknown"}`);
+  } catch (err) {
+    logBuild(`network error: ${(err as Error).message}`);
     buildStatus.value = "error";
-    socket?.disconnect();
-    socket = null;
-  });
-
-  socket.on("connect_error", (err) => {
-    logBuild(`connection error: ${err.message}`);
-    buildStatus.value = "error";
-  });
+  }
 }
 
 function downloadBuildResult(): void {
@@ -302,11 +265,6 @@ onMounted(() => {
   const saved = localStorage.getItem("waelio-theme") as Theme | null;
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   applyTheme(saved ?? (prefersDark ? "dark" : "light"));
-});
-
-onBeforeUnmount(() => {
-  socket?.disconnect();
-  socket = null;
 });
 </script>
 
