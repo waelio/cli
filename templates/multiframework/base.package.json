@@ -1,0 +1,10 @@
+{
+    "name": "my-app",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "echo 'Run dev server'",
+        "build": "echo 'Build project'",
+        "start": "echo 'Start project'"
+    }
+}

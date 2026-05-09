@@ -1,5 +1,42 @@
+// Serve static files from public-sites directory under /public-sites/*
+
+import { createReadStream } from "node:fs";
+
+async function handlePublicSitesRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    // Remove "/public-sites" prefix and normalize
+    const url = new URL(request.url ?? "/", "http://localhost");
+    let relPath = url.pathname.replace(/^\/public-sites\/?/, "");
+    // Prevent directory traversal
+    relPath = relPath.replace(/\.\.+/g, "");
+    let filePath = path.join(publicSitesDir, relPath);
+
+    // If path is a directory or ends with /, serve index.html
+    let statInfo: import("node:fs").Stats | undefined;
+    try {
+        statInfo = await stat(filePath);
+        if (statInfo.isDirectory()) {
+            filePath = path.join(filePath, "index.html");
+        }
+    } catch {
+        // If file does not exist, try index.html
+        filePath = path.join(filePath, "index.html");
+    }
+
+    // Check if file exists
+    try {
+        statInfo = await stat(filePath);
+        if (!statInfo.isFile()) throw new Error();
+    } catch {
+        sendJson(response, 404, { error: `Public site file not found: ${relPath}` });
+        return;
+    }
+
+    // Serve the file
+    response.writeHead(200, { "Content-Type": getContentType(filePath) });
+    createReadStream(filePath).pipe(response);
+}
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,8 +98,10 @@ const recommendedStack: RecommendedStack = {
     ],
 };
 
+
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const uiDistDir = path.join(projectRoot, "ui", "dist");
+const publicSitesDir = path.join(projectRoot, "public-sites");
 
 let buildInProgress = false;
 
@@ -101,6 +140,12 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
             return;
         }
 
+        // Serve static public sites
+        if (request.url && request.url.startsWith("/public-sites/")) {
+            await handlePublicSitesRequest(request, response);
+            return;
+        }
+
         if (requestUrl.pathname.startsWith("/api/")) {
             await handleApiRequest(request, response, requestUrl);
             return;
@@ -119,6 +164,18 @@ async function handleApiRequest(
     response: ServerResponse,
     requestUrl: URL,
 ): Promise<void> {
+    if (request.method === "GET" && requestUrl.pathname === "/api/public-sites") {
+        // List all top-level directories in public-sites/
+        try {
+            const entries = await readdir(publicSitesDir, { withFileTypes: true });
+            const sites = entries.filter(e => e.isDirectory()).map(e => e.name);
+            sendJson(response, 200, { sites });
+        } catch (error) {
+            sendJson(response, 500, { error: toErrorMessage(error) });
+        }
+        return;
+    }
+
     if (request.method === "GET" && requestUrl.pathname === "/api/health") {
         sendJson(response, 200, {
             defaultRepoUrl: DEFAULT_SITEFORGE_REPO,

@@ -1,0 +1,17 @@
+{
+  "name": "my-app-vue",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Run dev server'",
+    "build": "echo 'Build project'",
+    "start": "echo 'Start project'"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vite": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

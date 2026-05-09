@@ -1,0 +1,16 @@
+{
+  "name": "my-app-angular",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Run dev server'",
+    "build": "echo 'Build project'",
+    "start": "echo 'Start project'"
+  },
+  "dependencies": {
+    "@angular/core": "^17.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
