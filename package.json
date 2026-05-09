@@ -1,7 +1,6 @@
 {
-    "name": "waelio-cli",
-    "version": "0.1.0",
-    "private": true,
+    "name": "@waelio/cli",
+    "version": "0.1.1",
     "description": "CLI for building the waelio/siteforge website",
     "type": "module",
     "bin": {
