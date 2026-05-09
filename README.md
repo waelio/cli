@@ -1,16 +1,8 @@
-# waelio CLI + UI
+# @waelio/cli
 
-TypeScript toolkit for building [`waelio/siteforge`](https://github.com/waelio/siteforge) from either the terminal or a browser UI.
+TypeScript CLI + browser UI toolkit for building [`waelio/siteforge`](https://github.com/waelio/siteforge) from the terminal or a local web interface.
 
-## Recommended UI stack
-
-This repo now uses **Vite + TypeScript + Vue** for the on-screen UI.
-
-Why this stack fits well here:
-
-- **Vite** keeps development fast
-- **TypeScript** matches the rest of the repo and the build pipeline
-- **Vue** fits naturally with the broader waelio ecosystem and is quick to iterate on
+Built with **Vite + TypeScript + Vue**.
 
 ## What it does
 
@@ -28,79 +20,170 @@ Why this stack fits well here:
 - git
 - Go
 
-## Install dependencies
+## Install
+
+Run without installing:
+
+```sh
+npx @waelio/cli --help
+```
+
+Or install globally:
+
+```sh
+npm install -g @waelio/cli
+```
+
+## CLI commands
+
+### `waelio --help`
+
+Print the top-level help and list all available commands:
+
+```sh
+waelio --help
+```
+
+### `waelio doctor`
+
+Check that all required tools (`git`, `npm`, `go`) are installed and accessible:
+
+```sh
+waelio doctor
+```
+
+### `waelio build`
+
+Clone and build the `waelio/siteforge` website:
+
+```sh
+waelio build
+```
+
+**All options:**
+
+```sh
+waelio build \
+  --repo https://github.com/waelio/siteforge.git \  # custom repository URL (default: waelio/siteforge)
+  --ref  main \                                      # branch, tag, or commit to checkout
+  --source ./my-local-siteforge \                    # skip cloning, use an existing checkout
+  --workdir ./build-tmp \                            # directory to clone into
+  --dry-run                                          # print the plan without running anything
+```
+
+**Common examples:**
+
+```sh
+# default — clone and build waelio/siteforge
+waelio build
+
+# preview what would happen without executing
+waelio build --dry-run
+
+# build a specific branch
+waelio build --ref feat/new-homepage
+
+# build from a local checkout you already have
+waelio build --source ~/Code/GitHub/waelio/siteforge
+
+# clone into a custom directory
+waelio build --workdir /tmp/siteforge-build
+
+# build a fork
+waelio build --repo https://github.com/yourname/siteforge.git
+```
+
+### `waelio ui`
+
+Start the local web UI and API server (browser dashboard with live build logs):
+
+```sh
+waelio ui
+```
+
+**Options:**
+
+```sh
+waelio ui --port 4000   # default port is 3000
+```
+
+Open `http://localhost:3000` in your browser after running this.
+
+### `waelio scaffold <blueprint>`
+
+Scaffold a full Next.js (frontend) + NestJS (backend) project from a siteforge blueprint JSON:
+
+```sh
+waelio scaffold ./blueprint.json
+```
+
+**All options:**
+
+```sh
+waelio scaffold ./blueprint.json \
+  --out ./sites \   # output root directory (default: siteforge/sites)
+  --no-git          # skip git init and the initial commit
+```
+
+**Common examples:**
+
+```sh
+# scaffold with defaults
+waelio scaffold ./blueprint.json
+
+# scaffold into a custom output directory
+waelio scaffold ./blueprint.json --out ~/projects/my-site
+
+# scaffold without initialising a git repository
+waelio scaffold ./blueprint.json --no-git
+
+# combine options
+waelio scaffold ./blueprint.json --out ./sites --no-git
+```
+
+The blueprint JSON is produced by siteforge and describes the project name, slug,
+pages, features, integrations, locales, roles, brand tones, visual styles,
+content models, and SEO focuses. The scaffolder generates both workspaces from
+those selections.
+
+## Development
+
+### Install dependencies
 
 ```sh
 npm install
 ```
 
-## Run the UI in development
+### Run in development
 
 ```sh
 npm run dev
 ```
 
-That starts:
+Starts:
 
-- the API/build server on `http://localhost:3000`
-- the Vite UI on `http://localhost:5173`
+- API/build server on `http://localhost:3000`
+- Vite UI on `http://localhost:5173`
 
-## Build everything
+### Build everything
 
 ```sh
 npm run build
 ```
 
-## Run the built UI + API server
+### Run the built server
 
 ```sh
 npm start
 ```
 
-## CLI commands
-
-### Check prerequisites
+### Other scripts
 
 ```sh
-node dist/index.js doctor
+npm run typecheck   # tsc --noEmit + vue-tsc for the UI
+npm test            # run *.test.ts via tsx --test
+npm run check       # typecheck + tests
 ```
-
-### Build `siteforge`
-
-```sh
-node dist/index.js build
-```
-
-Options:
-
-- `--repo <url>` — repository URL to build (defaults to `waelio/siteforge`)
-- `--ref <ref>` — branch, tag, or commit to checkout before building
-- `--source <path>` — use an existing local checkout instead of cloning
-- `--workdir <path>` — directory to clone into when `--source` is not provided
-- `--dry-run` — print the build plan without executing it
-
-### Start the local UI/API server from the CLI
-
-```sh
-node dist/index.js ui --port 3000
-```
-
-### Scaffold a Next.js + NestJS project from a blueprint
-
-```sh
-node dist/index.js scaffold ./blueprint.json --out ./sites
-```
-
-Options:
-
-- `--out <dir>` — output root (defaults to `siteforge/sites`)
-- `--no-git` — skip `git init` and the initial commit
-
-The blueprint is a JSON file produced by siteforge that describes the project
-name, slug, and selections (pages, features, integrations, locales, roles,
-brand tones, visual styles, content models, and SEO focuses). The scaffolder
-generates a frontend (Next.js) and backend (NestJS) workspace from those
-selections.
 
 ## Helper repos surfaced in the UI
 
@@ -117,15 +200,6 @@ locales ship by default:
 `ar`, `de`, `en`, `es`, `fr`, `he`, `id`, `it`, `ru`, `sv`, `tr`, `zh`
 
 RTL locales (`ar`, `he`) should be considered when adding or editing UI copy.
-
-## Scripts
-
-- `npm run dev` — run the API server and Vite UI together
-- `npm run build` — build the CLI (`tsc`) and the UI (`vite build`)
-- `npm start` — run the built server (`dist/server.js`)
-- `npm run typecheck` — `tsc --noEmit` plus `vue-tsc` for the UI
-- `npm test` — run `*.test.ts` via `tsx --test`
-- `npm run check` — typecheck + tests
 
 ## Local repository discovery
 

@@ -1,6 +1,6 @@
 {
     "name": "@waelio/cli",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "CLI for building the waelio/siteforge website",
     "type": "module",
     "bin": {
@@ -16,9 +16,10 @@
         "node": ">=20"
     },
     "scripts": {
+        "clean": "rm -rf dist",
         "build:cli": "tsc -p tsconfig.json",
         "build:ui": "vite build",
-        "build": "npm run build:cli && npm run build:ui",
+        "build": "npm run clean && npm run build:cli && npm run build:ui",
         "dev:cli": "tsx src/index.ts",
         "dev:server": "tsx src/server.ts",
         "dev:ui": "vite",

@@ -201,7 +201,7 @@ function generateBlueprint(): void {
     $schema: "https://waelio.dev/schemas/blueprint/v1.json",
     generator: {
       name: "waelio-cli",
-      version: "0.1.0",
+      version: "0.1.2",
       url: "https://github.com/waelio/cli",
     },
     id: crypto.randomUUID(),
