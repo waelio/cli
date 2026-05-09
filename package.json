@@ -4,7 +4,7 @@
     "description": "CLI for building the waelio/siteforge website",
     "type": "module",
     "bin": {
-        "waelio": "./dist/index.js"
+        "waelio": "dist/index.js"
     },
     "files": [
         "dist",
