@@ -320,7 +320,7 @@ async function deployToSiteforge(): Promise<void> {
   }
 }
 
-function downloadBuildResult(): void {
+async function downloadBuildResult(): Promise<void> {
   if (!buildResult.value) return;
   const blob = new Blob([buildResult.value], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -329,6 +329,8 @@ function downloadBuildResult(): void {
   a.download = "siteforge-package.json";
   a.click();
   URL.revokeObjectURL(url);
+
+  await deployToSiteforge();
 }
 
 function resetAll(): void {
