@@ -231,3 +231,5 @@ The UI and API now scan your local GitHub workspace and build a sanitized reposi
 - The default repository URL is `https://github.com/waelio/siteforge.git`.
 - A custom workdir can be used when you want a persistent local checkout.
 - If `source` is provided, cloning is skipped and the existing checkout is built directly.
+
+- [https://waelio.com/packages/@waelio/cli](https://waelio.com/packages/@waelio/cli)
