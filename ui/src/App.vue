@@ -232,7 +232,7 @@ function downloadBlueprint(): void {
 
 const SITEFORGE_URL =
   (import.meta.env.VITE_SITEFORGE_URL as string | undefined) ??
-  "https://siteforge.waelio.com";
+  "https://siteforge.wahbehw.workers.dev";
 
 const SCAFFOLD_URL =
   (import.meta.env.VITE_SCAFFOLD_URL as string | undefined) ?? "/api/scaffold";
@@ -280,6 +280,42 @@ async function buildSite(): Promise<void> {
     logBuild(`scaffolded "${data.slug}" at ${data.outDir}`);
   } catch (err) {
     logBuild(`network error: ${(err as Error).message}`);
+    buildStatus.value = "error";
+  }
+}
+
+async function deployToSiteforge(): Promise<void> {
+  if (!projectName.value.trim()) {
+    logBuild("error: project name is required");
+    buildStatus.value = "error";
+    return;
+  }
+  generateBlueprint();
+  buildLog.value = [];
+  buildResult.value = "";
+  buildStatus.value = "sending";
+
+  const targetUrl = `${SITEFORGE_URL}/public-sites/`;
+  logBuild(`POST webhook to ${targetUrl}`);
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: blueprint.value,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      logBuild(`webhook error: ${res.status} ${text}`);
+      buildStatus.value = "error";
+      return;
+    }
+    const data = await res.json();
+    buildResult.value = JSON.stringify(data, null, 2);
+    buildStatus.value = "done";
+    logBuild(`Success! Live at: ${SITEFORGE_URL}${data.url}`);
+  } catch (err) {
+    logBuild(`webhook network error: ${(err as Error).message}`);
     buildStatus.value = "error";
   }
 }
@@ -412,6 +448,20 @@ onMounted(() => {
         @click="buildSite"
       >
         Build
+      </button>
+      <button
+        type="button"
+        class="btn"
+        :disabled="
+          !projectName.trim() ||
+          buildStatus === 'connecting' ||
+          buildStatus === 'sending' ||
+          buildStatus === 'running'
+        "
+        @click="deployToSiteforge"
+        style="background: var(--fg); color: #111;"
+      >
+        Deploy to Siteforge Webhook
       </button>
       <button
         type="button"
