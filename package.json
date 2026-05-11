@@ -1,6 +1,6 @@
 {
     "name": "@waelio/cli",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "description": "CLI for building the waelio/siteforge website",
     "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
     "homepage": "https://github.com/waelio/cli#readme",
