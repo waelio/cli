@@ -2,8 +2,13 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const TEMPLATES_DIR = path.resolve(__dirname, "../../templates/multiframework");
 
 export interface BlueprintSelections {
     selectedPages?: string[];
@@ -45,6 +50,15 @@ function slugify(value: string): string {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
         || "site";
+}
+
+function pascalCase(str: string): string {
+    return slugify(str).split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+}
+
+function camelCase(str: string): string {
+    const p = pascalCase(str);
+    return p ? p.charAt(0).toLowerCase() + p.slice(1) : "";
 }
 
 function pageToRoute(name: string): string {
@@ -233,14 +247,80 @@ bootstrap();
 `;
 }
 
-const NEST_APP_MODULE = `import { Module } from "@nestjs/common";
+function nestAppModule(features: string[]): string {
+    const imports = features.map(f => {
+        const routeName = slugify(f);
+        const pName = pascalCase(f);
+        return `import { ${pName}Module } from "./${routeName}/${routeName}.module.js";`;
+    }).join("\n");
+    
+    const moduleNames = features.map(f => `${pascalCase(f)}Module`);
+    const importsArray = moduleNames.length > 0 ? `\n    ${moduleNames.join(",\n    ")}\n  ` : "";
+
+    return `import { Module } from "@nestjs/common";
 import { HealthController } from "./health.controller.js";
+${imports}
 
 @Module({
+  imports: [${importsArray}],
   controllers: [HealthController],
 })
 export class AppModule {}
 `;
+}
+
+function nestFeatureService(name: string): string {
+    const pName = pascalCase(name);
+    const className = `${pName}Service`;
+    return `import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class ${className} {
+  get${pName}() {
+    return { message: "This action returns a ${name}" };
+  }
+}
+`;
+}
+
+function nestFeatureController(name: string): string {
+    const pName = pascalCase(name);
+    const className = `${pName}Controller`;
+    const serviceName = `${pName}Service`;
+    const serviceVar = `${camelCase(name)}Service`;
+    const routeName = slugify(name);
+    return `import { Controller, Get } from "@nestjs/common";
+import { ${serviceName} } from "./${routeName}.service.js";
+
+@Controller("${routeName}")
+export class ${className} {
+  constructor(private readonly ${serviceVar}: ${serviceName}) {}
+
+  @Get()
+  get() {
+    return this.${serviceVar}.get${pName}();
+  }
+}
+`;
+}
+
+function nestFeatureModule(name: string): string {
+    const pName = pascalCase(name);
+    const className = `${pName}Module`;
+    const controllerName = `${pName}Controller`;
+    const serviceName = `${pName}Service`;
+    const routeName = slugify(name);
+    return `import { Module } from "@nestjs/common";
+import { ${controllerName} } from "./${routeName}.controller.js";
+import { ${serviceName} } from "./${routeName}.service.js";
+
+@Module({
+  controllers: [${controllerName}],
+  providers: [${serviceName}],
+})
+export class ${className} {}
+`;
+}
 
 const NEST_HEALTH_CONTROLLER = `import { Controller, Get } from "@nestjs/common";
 
@@ -369,35 +449,76 @@ async function writeScaffold(
     );
     const pages = pageNames.map((name) => ({ name, route: pageToRoute(name) }));
 
-    // Frontend
-    await writeFileEnsured(
-        path.join(outDir, "frontend/package.json"),
-        frontendPackageJson(slug),
-    );
-    await writeFileEnsured(
-        path.join(outDir, "frontend/tsconfig.json"),
-        NEXT_TSCONFIG,
-    );
-    await writeFileEnsured(
-        path.join(outDir, "frontend/next.config.js"),
-        NEXT_CONFIG,
-    );
-    await writeFileEnsured(
-        path.join(outDir, "frontend/next-env.d.ts"),
-        NEXT_ENV_DTS,
-    );
-    await writeFileEnsured(
-        path.join(outDir, "frontend/app/layout.tsx"),
-        rootLayout(projectName, pages),
-    );
+    const integrations = (sel.selectedIntegrations ?? []).map(x => x.toLowerCase());
+    let framework: "next" | "vue" | "react" | "svelte" | "angular" = "next";
+    
+    if (integrations.includes("vue")) framework = "vue";
+    else if (integrations.includes("svelte")) framework = "svelte";
+    else if (integrations.includes("angular")) framework = "angular";
+    else if (integrations.includes("react") && !integrations.includes("next.js")) framework = "react";
 
-    for (const page of pages) {
+    if (framework === "next") {
+        // Next.js Frontend
         await writeFileEnsured(
-            path.join(outDir, "frontend", pagePath(page.route)),
-            pageComponent(page.name, projectName),
+            path.join(outDir, "frontend/package.json"),
+            frontendPackageJson(slug),
         );
-    }
+        await writeFileEnsured(
+            path.join(outDir, "frontend/tsconfig.json"),
+            NEXT_TSCONFIG,
+        );
+        await writeFileEnsured(
+            path.join(outDir, "frontend/next.config.js"),
+            NEXT_CONFIG,
+        );
+        await writeFileEnsured(
+            path.join(outDir, "frontend/next-env.d.ts"),
+            NEXT_ENV_DTS,
+        );
+        await writeFileEnsured(
+            path.join(outDir, "frontend/app/layout.tsx"),
+            rootLayout(projectName, pages),
+        );
 
+        for (const page of pages) {
+            await writeFileEnsured(
+                path.join(outDir, "frontend", pagePath(page.route)),
+                pageComponent(page.name, projectName),
+            );
+        }
+    } else {
+        // Multi-framework Frontend
+        try {
+            const pkgPath = path.join(TEMPLATES_DIR, `package.${framework}.json`);
+            let pkgData = await readFile(pkgPath, "utf8");
+            
+            // Render package.json
+            pkgData = pkgData.replace(/"name":\s*"[^"]+"/, `"name": "${slug}-frontend"`);
+            await writeFileEnsured(path.join(outDir, "frontend/package.json"), pkgData);
+
+            const extMap: Record<string, string> = {
+                vue: "vue",
+                react: "tsx",
+                svelte: "svelte",
+                angular: "component.ts"
+            };
+            const ext = extMap[framework];
+            const tplPath = path.join(TEMPLATES_DIR, `index.${ext}`);
+            let tplData = await readFile(tplPath, "utf8");
+
+            // Render template placeholders
+            tplData = tplData
+                .replace(/\{\{\s*title\s*\}\}/g, projectName)
+                .replace(/\{\{\s*email\s*\}\}/g, `${slug}@example.com`)
+                .replace(/\{\{\s*description\s*\}\}/g, `Generated frontend for ${projectName}`);
+
+            // For simplicity, just create an App/index file since the templates are single components
+            const srcPath = path.join(outDir, "frontend/src", `App.${ext}`);
+            await writeFileEnsured(srcPath, tplData);
+        } catch (e) {
+            console.warn(`Failed to scaffold ${framework} frontend, falling back to empty dir: ${e}`);
+        }
+    }
     // Backend
     const features = sel.selectedFeatures ?? [];
     const modules = ["Health", ...features];
@@ -415,12 +536,29 @@ async function writeScaffold(
     );
     await writeFileEnsured(
         path.join(outDir, "backend/src/app.module.ts"),
-        NEST_APP_MODULE,
+        nestAppModule(features),
     );
     await writeFileEnsured(
         path.join(outDir, "backend/src/health.controller.ts"),
         NEST_HEALTH_CONTROLLER,
     );
+
+    for (const feature of features) {
+        const routeName = slugify(feature);
+        const featureDir = path.join(outDir, "backend/src", routeName);
+        await writeFileEnsured(
+            path.join(featureDir, `${routeName}.service.ts`),
+            nestFeatureService(feature)
+        );
+        await writeFileEnsured(
+            path.join(featureDir, `${routeName}.controller.ts`),
+            nestFeatureController(feature)
+        );
+        await writeFileEnsured(
+            path.join(featureDir, `${routeName}.module.ts`),
+            nestFeatureModule(feature)
+        );
+    }
 
     // Root
     await writeFileEnsured(

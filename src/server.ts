@@ -39,6 +39,7 @@ import { createServer, type IncomingMessage, type Server as HttpServer, type Ser
 import { readFile, stat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { io } from "socket.io-client";
 
 import {
     DEFAULT_SITEFORGE_REPO,
@@ -284,6 +285,11 @@ async function handleApiRequest(
         return;
     }
 
+    if (request.method === "POST" && requestUrl.pathname === "/api/webhook/build") {
+        await handleWebhookBuild(request, response);
+        return;
+    }
+
     sendJson(response, 404, {
         error: `Unknown API route: ${requestUrl.pathname}`,
     });
@@ -360,6 +366,47 @@ async function handleBuildStream(response: ServerResponse, options: BuildSitefor
         if (!clientClosed && !response.writableEnded) {
             response.end();
         }
+    }
+}
+
+async function handleWebhookBuild(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (buildInProgress) {
+        sendJson(response, 409, {
+            error: "A build is already running. Please wait for it to finish.",
+        });
+        return;
+    }
+
+    const payload = await readJsonBody(request);
+    const options = normalizeBuildOptions(payload);
+    
+    const messagingUrl = isRecord(payload) && typeof payload.messagingUrl === "string" 
+        ? payload.messagingUrl 
+        : "http://localhost:3030"; // Default FeathersJS/waelio-messaging port
+
+    const socket = io(messagingUrl);
+
+    buildInProgress = true;
+    sendJson(response, 202, { message: "Build triggered via webhook.", messagingUrl });
+
+    try {
+        const plan = await runBuild(options, {
+            onPlan: (nextPlan) => socket.emit("build-event", { type: "plan", data: nextPlan }),
+            onInfo: (message) => socket.emit("build-event", { type: "info", data: message }),
+            onStepStart: (step, context) => socket.emit("build-event", { type: "step", data: { step, ...context } }),
+            onStdout: (chunk) => socket.emit("build-event", { type: "stdout", data: chunk }),
+            onStderr: (chunk) => socket.emit("build-event", { type: "stderr", data: chunk }),
+        });
+
+        socket.emit("build-event", { type: "complete", data: plan });
+    } catch (error) {
+        socket.emit("build-event", {
+            type: "failure",
+            data: toErrorMessage(error),
+        });
+    } finally {
+        buildInProgress = false;
+        setTimeout(() => socket.disconnect(), 1000);
     }
 }
 
