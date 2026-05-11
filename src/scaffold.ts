@@ -42,7 +42,7 @@ export interface ScaffoldFromBlueprintOptions {
     initGit?: boolean;
 }
 
-const DEFAULT_OUT_ROOT = "/Users/waelio/Code/GitHub/waelio/siteforge/sites";
+const DEFAULT_OUT_ROOT = "/Users/waelio/Code/GitHub/waelio/siteforge/public-sites";
 
 function slugify(value: string): string {
     return value
