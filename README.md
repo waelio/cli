@@ -95,11 +95,15 @@ waelio build --repo https://github.com/yourname/siteforge.git
 
 ### `waelio ui`
 
-Start the local web UI and API server (browser dashboard with live build logs):
+Start the local web UI and API server (browser dashboard with live build logs and a multi-view interface):
 
 ```sh
 waelio ui
 ```
+
+**UI Features:**
+- **Scaffold View:** Form-based generator to produce and deploy Siteforge blueprints to webhooks.
+- **Public Sites View:** A dedicated dashboard for listing and accessing successfully scaffolded client sites served via the `/api/public-sites` route.
 
 **Options:**
 
