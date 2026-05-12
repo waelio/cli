@@ -1,6 +1,6 @@
 {
     "name": "@waelio/cli",
-    "version": "0.1.7",
+    "version": "0.1.9",
     "description": "CLI for building the waelio/siteforge website",
     "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
     "homepage": "https://github.com/waelio/cli#readme",
@@ -57,7 +57,7 @@
         "concurrently": "^9.1.2",
         "tsx": "^4.20.0",
         "typescript": "^5.8.3",
-        "vite": "^5.4.21",
+        "vite": "^8.0.12",
         "vue-tsc": "^2.2.0"
     }
 }
