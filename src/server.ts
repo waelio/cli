@@ -1,6 +1,136 @@
 // Serve static files from public-sites directory under /public-sites/*
 
 import { createReadStream } from "node:fs";
+import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
+import { readFile, readdir, stat } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { io } from "socket.io-client";
+
+import {
+    DEFAULT_SITEFORGE_REPO,
+    formatBuildPlan,
+    getDoctorReport,
+    prepareBuildPlan,
+    runBuild,
+    type BuildPlan,
+    type BuildSiteforgeOptions,
+} from "./siteforge.js";
+import {
+    DEFAULT_LOCAL_REPOS_ROOT,
+    listLocalRepositoryDirectory,
+    scanLocalRepositories,
+} from "./localRepos.js";
+import { scaffoldFromBlueprint, type Blueprint } from "./scaffold.js";
+
+interface HelperRepository {
+    name: string;
+    url: string;
+    description: string;
+    suggestedUse: string;
+}
+
+interface RecommendedStack {
+    name: string;
+    reasons: string[];
+}
+
+interface ResolvedScaffoldRequest {
+    blueprint: Blueprint;
+    outRoot: string;
+    initGit: boolean;
+}
+
+interface ScaffoldPayloadResolution {
+    mode: "none" | "scaffold" | "invalid";
+    request?: ResolvedScaffoldRequest;
+    error?: string;
+}
+
+const helperRepositories: HelperRepository[] = [
+    {
+        name: "waelio/ustore",
+        url: "https://github.com/waelio/ustore",
+        description: "Universal storage adapters with a clean CRUD-style API.",
+        suggestedUse: "Great for caching UI state, history, and future build session persistence.",
+    },
+    {
+        name: "waelio/utils",
+        url: "https://github.com/waelio/utils",
+        description: "Shared utilities for config, storage, and UI-friendly helpers.",
+        suggestedUse: "A good future home for reusable notifications, config helpers, or shared browser utilities.",
+    },
+    {
+        name: "waelio/waelio-messaging",
+        url: "https://github.com/waelio/waelio-messaging",
+        description: "Realtime messaging and event distribution with FeathersJS and Socket.io.",
+        suggestedUse: "Useful later if you want shared build dashboards, collaboration, or remote build notifications.",
+    },
+];
+
+const recommendedStack: RecommendedStack = {
+    name: "Vite + TypeScript + Vue",
+    reasons: [
+        "Vite keeps the UI extremely fast during local development.",
+        "TypeScript matches the existing CLI and build code.",
+        "Vue fits well with the broader waelio ecosystem and is quick to iterate on.",
+    ],
+};
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const uiDistDir = path.join(projectRoot, "ui", "dist");
+const publicSitesDir = path.join(projectRoot, "public-sites");
+
+let buildInProgress = false;
+
+export function resolveScaffoldRequestPayload(
+    payload: unknown,
+    defaultOutRoot = publicSitesDir,
+): ScaffoldPayloadResolution {
+    if (!isRecord(payload)) {
+        return { mode: "none" };
+    }
+
+    const hasWrappedBlueprint = Object.hasOwn(payload, "blueprint");
+    const blueprintCandidate = hasWrappedBlueprint ? payload.blueprint : payload;
+    const looksLikeDirectBlueprint = !hasWrappedBlueprint && (
+        Object.hasOwn(payload, "$schema")
+        || Object.hasOwn(payload, "projectName")
+        || Object.hasOwn(payload, "slug")
+        || Object.hasOwn(payload, "selections")
+    );
+
+    if (!hasWrappedBlueprint && !looksLikeDirectBlueprint) {
+        return { mode: "none" };
+    }
+
+    if (!isRecord(blueprintCandidate)) {
+        return {
+            mode: "invalid",
+            error: "Blueprint payload must be a JSON object.",
+        };
+    }
+
+    const projectName = typeof blueprintCandidate.projectName === "string"
+        ? blueprintCandidate.projectName.trim()
+        : "";
+
+    if (!projectName) {
+        return {
+            mode: "invalid",
+            error: "Blueprint must include a non-empty projectName.",
+        };
+    }
+
+    return {
+        mode: "scaffold",
+        request: {
+            blueprint: blueprintCandidate as Blueprint,
+            outRoot: normalizeString(payload.outRoot) ?? defaultOutRoot,
+            initGit: payload.initGit !== false,
+        },
+    };
+}
 
 async function handlePublicSitesRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
     // Remove "/public-sites" prefix and normalize
@@ -39,76 +169,6 @@ async function handlePublicSitesRequest(request: IncomingMessage, response: Serv
     });
     createReadStream(filePath).pipe(response);
 }
-import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
-import { readFile, stat, readdir } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { io } from "socket.io-client";
-
-import {
-    DEFAULT_SITEFORGE_REPO,
-    formatBuildPlan,
-    getDoctorReport,
-    prepareBuildPlan,
-    runBuild,
-    type BuildPlan,
-    type BuildSiteforgeOptions,
-} from "./siteforge.js";
-import {
-    DEFAULT_LOCAL_REPOS_ROOT,
-    listLocalRepositoryDirectory,
-    scanLocalRepositories,
-} from "./localRepos.js";
-import { scaffoldFromBlueprint, type Blueprint } from "./scaffold.js";
-
-interface HelperRepository {
-    name: string;
-    url: string;
-    description: string;
-    suggestedUse: string;
-}
-
-interface RecommendedStack {
-    name: string;
-    reasons: string[];
-}
-
-const helperRepositories: HelperRepository[] = [
-    {
-        name: "waelio/ustore",
-        url: "https://github.com/waelio/ustore",
-        description: "Universal storage adapters with a clean CRUD-style API.",
-        suggestedUse: "Great for caching UI state, history, and future build session persistence.",
-    },
-    {
-        name: "waelio/utils",
-        url: "https://github.com/waelio/utils",
-        description: "Shared utilities for config, storage, and UI-friendly helpers.",
-        suggestedUse: "A good future home for reusable notifications, config helpers, or shared browser utilities.",
-    },
-    {
-        name: "waelio/waelio-messaging",
-        url: "https://github.com/waelio/waelio-messaging",
-        description: "Realtime messaging and event distribution with FeathersJS and Socket.io.",
-        suggestedUse: "Useful later if you want shared build dashboards, collaboration, or remote build notifications.",
-    },
-];
-
-const recommendedStack: RecommendedStack = {
-    name: "Vite + TypeScript + Vue",
-    reasons: [
-        "Vite keeps the UI extremely fast during local development.",
-        "TypeScript matches the existing CLI and build code.",
-        "Vue fits well with the broader waelio ecosystem and is quick to iterate on.",
-    ],
-};
-
-
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const uiDistDir = path.join(projectRoot, "ui", "dist");
-const publicSitesDir = path.join(projectRoot, "public-sites");
-
-let buildInProgress = false;
 
 export async function startServer(options: { port?: number } = {}): Promise<HttpServer> {
     const port = options.port ?? Number(process.env.PORT ?? 3000);
@@ -269,26 +329,17 @@ async function handleApiRequest(
             return;
         }
 
-        const blueprint = (
-            isRecord(payload.blueprint) ? payload.blueprint : payload
-        ) as Blueprint;
+        const scaffoldRequest = resolveScaffoldRequestPayload(payload, publicSitesDir);
 
-        if (!blueprint.projectName || !blueprint.projectName.trim()) {
+        if (scaffoldRequest.mode !== "scaffold" || !scaffoldRequest.request) {
             sendJson(response, 400, {
-                error: "Blueprint must include a non-empty projectName.",
+                error: scaffoldRequest.error ?? "Blueprint payload must be a JSON object.",
             });
             return;
         }
 
-        const outRoot = normalizeString(payload.outRoot) ?? publicSitesDir;
-        const initGit = payload.initGit !== false;
-
         try {
-            const result = await scaffoldFromBlueprint({
-                blueprint,
-                outRoot,
-                initGit,
-            });
+            const result = await scaffoldFromBlueprint(scaffoldRequest.request);
             sendJson(response, 200, result);
         } catch (error) {
             sendJson(response, 500, { error: toErrorMessage(error) });
@@ -394,6 +445,15 @@ async function handleWebhookBuild(request: IncomingMessage, response: ServerResp
     }
 
     const payload = await readJsonBody(request);
+    const scaffoldRequest = resolveScaffoldRequestPayload(payload, publicSitesDir);
+
+    if (scaffoldRequest.mode === "invalid") {
+        sendJson(response, 400, {
+            error: scaffoldRequest.error ?? "Invalid blueprint payload.",
+        });
+        return;
+    }
+
     const options = normalizeBuildOptions(payload);
 
     const messagingUrl = isRecord(payload) && typeof payload.messagingUrl === "string"
@@ -403,9 +463,34 @@ async function handleWebhookBuild(request: IncomingMessage, response: ServerResp
     const socket = io(messagingUrl);
 
     buildInProgress = true;
-    sendJson(response, 202, { message: "Build triggered via webhook.", messagingUrl });
+    sendJson(response, 202, {
+        message: scaffoldRequest.mode === "scaffold"
+            ? "Blueprint scaffold triggered via webhook."
+            : "Build triggered via webhook.",
+        messagingUrl,
+        mode: scaffoldRequest.mode === "scaffold" ? "scaffold" : "build",
+    });
 
     try {
+        if (scaffoldRequest.mode === "scaffold" && scaffoldRequest.request) {
+            socket.emit("build-event", {
+                type: "info",
+                data: `Scaffolding blueprint \"${scaffoldRequest.request.blueprint.projectName?.trim()}\"`,
+            });
+
+            const result = await scaffoldFromBlueprint(scaffoldRequest.request);
+
+            socket.emit("build-event", {
+                type: "complete",
+                data: {
+                    mode: "scaffold",
+                    result,
+                },
+            });
+
+            return;
+        }
+
         const plan = await runBuild(options, {
             onPlan: (nextPlan) => socket.emit("build-event", { type: "plan", data: nextPlan }),
             onInfo: (message) => socket.emit("build-event", { type: "info", data: message }),
