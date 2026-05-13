@@ -1,26 +1,29 @@
 # @waelio/cli
 
-TypeScript CLI + browser UI toolkit for building [`waelio/siteforge`](https://github.com/waelio/siteforge) from the terminal or a local web interface.
+[![npm version](https://img.shields.io/npm/v/@waelio/cli.svg?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@waelio/cli)
+[![license](https://img.shields.io/npm/l/@waelio/cli.svg?style=flat-square)](./LICENSE)
+[![node](https://img.shields.io/node/v/@waelio/cli.svg?style=flat-square)](https://nodejs.org)
 
-Built with **Vite + TypeScript + Vue**.
+> TypeScript CLI + browser UI toolkit for building [`waelio/siteforge`](https://github.com/waelio/siteforge) from the terminal or a local web interface.
 
-## What it does
+🔗 **Live demo:** [cli.waelio.workers.dev](https://cli.waelio.workers.dev)
 
-- checks that required local tools are installed
-- previews the build plan before running it
-- clones `waelio/siteforge` into a working directory
-- installs dependencies with `npm ci`
-- runs `npm run build`
-- shows the full workflow in a browser UI with live logs
+Built with **Vite 8 · TypeScript · Vue 3 · Commander**.
 
-## Requirements
+---
 
-- Node.js 20+
-- npm
-- git
-- Go
+## ✨ Features
 
-## Install
+- 🩺 **Doctor** — checks that required local tools are installed
+- 📋 **Dry-run** — previews the build plan before running it
+- 🔧 **Build** — clones `waelio/siteforge`, installs deps, and runs the build
+- 🏗️ **Scaffold** — generates full Next.js + NestJS projects from a blueprint JSON
+- 🖥️ **Browser UI** — a Vue dashboard with live logs, scaffold forms, and public site listings
+- 🌐 **12 locales** — `ar` `de` `en` `es` `fr` `he` `id` `it` `ru` `sv` `tr` `zh` (RTL-ready)
+
+---
+
+## 📦 Install
 
 Run without installing:
 
@@ -34,15 +37,13 @@ Or install globally:
 npm install -g @waelio/cli
 ```
 
-## CLI commands
+---
+
+## 🚀 CLI Commands
 
 ### `waelio --help`
 
-Print the top-level help and list all available commands:
-
-```sh
-waelio --help
-```
+Print the top-level help and list all available commands.
 
 ### `waelio doctor`
 
@@ -60,18 +61,17 @@ Clone and build the `waelio/siteforge` website:
 waelio build
 ```
 
-**All options:**
+**Options:**
 
-```sh
-waelio build \
-  --repo https://github.com/waelio/siteforge.git \  # custom repository URL (default: waelio/siteforge)
-  --ref  main \                                      # branch, tag, or commit to checkout
-  --source ./my-local-siteforge \                    # skip cloning, use an existing checkout
-  --workdir ./build-tmp \                            # directory to clone into
-  --dry-run                                          # print the plan without running anything
-```
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--repo <url>` | Custom repository URL | `waelio/siteforge` |
+| `--ref <ref>` | Branch, tag, or commit to checkout | `main` |
+| `--source <path>` | Skip cloning, use an existing checkout | — |
+| `--workdir <path>` | Directory to clone into | `./tmp` |
+| `--dry-run` | Print the plan without running anything | `false` |
 
-**Common examples:**
+**Examples:**
 
 ```sh
 # default — clone and build waelio/siteforge
@@ -83,11 +83,8 @@ waelio build --dry-run
 # build a specific branch
 waelio build --ref feat/new-homepage
 
-# build from a local checkout you already have
+# build from a local checkout
 waelio build --source ~/Code/GitHub/waelio/siteforge
-
-# clone into a custom directory
-waelio build --workdir /tmp/siteforge-build
 
 # build a fork
 waelio build --repo https://github.com/yourname/siteforge.git
@@ -95,141 +92,195 @@ waelio build --repo https://github.com/yourname/siteforge.git
 
 ### `waelio ui`
 
-Start the local web UI and API server (browser dashboard with live build logs and a multi-view interface):
+Start the local web UI and API server:
 
 ```sh
 waelio ui
+waelio ui --port 4000   # default: 3000
 ```
 
-**UI Features:**
-- **Scaffold View:** Form-based generator to produce and deploy Siteforge blueprints to webhooks.
-- **Public Sites View:** A dedicated dashboard for listing and accessing successfully scaffolded client sites served via the `/api/public-sites` route.
+Open `http://localhost:3000` in your browser.
 
-**Options:**
+**UI Views:**
 
-```sh
-waelio ui --port 4000   # default port is 3000
-```
-
-Open `http://localhost:3000` in your browser after running this.
+| View | Description |
+|------|-------------|
+| **Scaffold** | Form-based generator to produce and deploy Siteforge blueprints |
+| **Public Sites** | Dashboard listing scaffolded client sites served via `/api/public-sites` |
 
 ### `waelio scaffold <blueprint>`
 
-Scaffold a full Next.js (frontend) + NestJS (backend) project from a siteforge blueprint JSON:
+Scaffold a full Next.js (frontend) + NestJS (backend) project from a Siteforge blueprint JSON:
 
 ```sh
 waelio scaffold ./blueprint.json
 ```
 
-**All options:**
+**Options:**
 
-```sh
-waelio scaffold ./blueprint.json \
-  --out ./sites \   # output root directory (default: siteforge/sites)
-  --no-git          # skip git init and the initial commit
-```
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--out <dir>` | Output root directory | `siteforge/sites` |
+| `--no-git` | Skip `git init` and the initial commit | `false` |
 
-**Common examples:**
+**Examples:**
 
 ```sh
 # scaffold with defaults
 waelio scaffold ./blueprint.json
 
-# scaffold into a custom output directory
+# scaffold into a custom directory
 waelio scaffold ./blueprint.json --out ~/projects/my-site
 
 # scaffold without initialising a git repository
 waelio scaffold ./blueprint.json --no-git
-
-# combine options
-waelio scaffold ./blueprint.json --out ./sites --no-git
 ```
 
-The blueprint JSON is produced by siteforge and describes the project name, slug,
-pages, features, integrations, locales, roles, brand tones, visual styles,
-content models, and SEO focuses. The scaffolder generates both workspaces from
-those selections.
+The blueprint JSON describes the project name, slug, pages, features, integrations, locales, roles, brand tones, visual styles, content models, and SEO focuses. The scaffolder generates both workspaces from those selections.
 
-## Development
+---
+
+## 🏛️ Project Structure
+
+```
+@waelio/cli
+├── src/
+│   ├── index.ts          # CLI entry point (Commander)
+│   ├── server.ts         # Express API server
+│   ├── siteforge.ts      # Build orchestration
+│   ├── scaffold.ts       # Blueprint scaffolder
+│   ├── localRepos.ts     # Local repo discovery
+│   └── locals/           # i18n locale files (12 languages)
+├── ui/
+│   ├── src/
+│   │   ├── App.vue       # Root Vue component
+│   │   └── views/        # ScaffoldView, PublicSitesView
+│   └── dist/             # Built static assets
+├── templates/            # Multi-framework scaffold templates
+├── public-sites/         # Scaffolded demo sites (acme-dental, agent-007, e2e-test-site)
+├── wrangler.toml         # Cloudflare Workers deployment config
+├── vite.config.ts        # Vite build config
+└── package.json
+```
+
+---
+
+## 🛠️ Development
 
 ### Install dependencies
 
 ```sh
-npm install
+pnpm install
 ```
 
 ### Run in development
 
 ```sh
-npm run dev
+pnpm dev
 ```
 
-Starts:
+Starts concurrently:
 
-- API/build server on `http://localhost:3000`
-- Vite UI on `http://localhost:5173`
+- **API server** on `http://localhost:3000`
+- **Vite UI** on `http://localhost:5173` (proxies `/api` → `:3000`)
 
 ### Build everything
 
 ```sh
-npm run build
+pnpm run build
 ```
 
-### Run the built server
+### Run the production server
 
 ```sh
-npm start
+pnpm start
 ```
 
-### Other scripts
+### Quality checks
 
 ```sh
-npm run typecheck   # tsc --noEmit + vue-tsc for the UI
-npm test            # run *.test.ts via tsx --test
-npm run check       # typecheck + tests
+pnpm run typecheck   # tsc --noEmit + vue-tsc for the UI
+pnpm test            # run *.test.ts via tsx --test
+pnpm run check       # typecheck + tests
 ```
 
-## Helper repos surfaced in the UI
+---
 
-- `waelio/ustore` — storage and state patterns
-- `waelio/utils` — shared utilities and UI-friendly helpers
-- `waelio/waelio-messaging` — future real-time collaboration ideas
+## ☁️ Deployment
 
-## Localization
+The UI is deployed to **Cloudflare Workers** as a static site.
 
-UI strings are stored as per-locale JSON files under `src/locals/<lang>/<lang>.json`,
-with a top-level `src/locals/manifest.json` summarizing the set. The following
-locales ship by default:
+### Deploy manually
 
-`ar`, `de`, `en`, `es`, `fr`, `he`, `id`, `it`, `ru`, `sv`, `tr`, `zh`
+```sh
+pnpm run build
+npx wrangler deploy
+```
 
-RTL locales (`ar`, `he`) should be considered when adding or editing UI copy.
+The `wrangler.toml` configuration serves the built Vue app from `ui/dist`:
 
-## Local repository discovery
+```toml
+name = "cli"
+compatibility_date = "2024-12-01"
 
-The UI and API now scan your local GitHub workspace and build a sanitized repository index.
+[assets]
+directory = "./ui/dist"
+```
 
-- default local root: `/Users/waelio/Code/GitHub`
-- override with `WAELIO_LOCAL_ROOT`
-- top-level repositories are included
-- nested build/checkouts such as `.build`, `node_modules`, `dist`, and `.git` internals are excluded from discovery
+**Live URL:** [https://cli.waelio.workers.dev](https://cli.waelio.workers.dev)
 
-### Local repo API
+---
 
-- `GET /api/local-repos` — returns the compiled local repository list
-- `GET /api/local-repos/tree?repoId=...&path=...` — returns a sanitized physical folder listing for a selected local repository
+## 🔌 API Endpoints
 
-### Safety rules
+### Build & Scaffold
 
-- repository IDs map to scanned local repos only
-- folder browsing is restricted to paths inside the selected repository
-- path traversal such as `..` is rejected
-- `.git` directories are hidden from the served listing
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/build` | Trigger a siteforge build |
+| `POST` | `/api/scaffold` | Scaffold from a blueprint |
+| `GET` | `/api/public-sites` | List scaffolded demo sites |
 
-## Notes
+### Local Repository Discovery
 
-- The default repository URL is `https://github.com/waelio/siteforge.git`.
-- A custom workdir can be used when you want a persistent local checkout.
-- If `source` is provided, cloning is skipped and the existing checkout is built directly.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/local-repos` | Returns the local repository index |
+| `GET` | `/api/local-repos/tree?repoId=...&path=...` | Browse a repo's file tree |
 
-- [https://waelio.com/packages/@waelio/cli](https://waelio.com/packages/@waelio/cli)
+**Safety rules:**
+
+- Repository IDs map to scanned local repos only
+- Folder browsing is restricted to paths inside the selected repository
+- Path traversal (`..`) is rejected
+- `.git` directories are hidden from listings
+- Default scan root: `~/Code/GitHub` (override with `WAELIO_LOCAL_ROOT`)
+
+---
+
+## 🌍 Localization
+
+UI strings live in `src/locals/<lang>/<lang>.json` with a top-level `src/locals/manifest.json`.
+
+Supported locales:
+
+`ar` · `de` · `en` · `es` · `fr` · `he` · `id` · `it` · `ru` · `sv` · `tr` · `zh`
+
+> RTL locales (`ar`, `he`) are supported — keep them in mind when editing UI copy.
+
+---
+
+## 📚 Related Packages
+
+| Package | Description |
+|---------|-------------|
+| [`@waelio/utils`](https://www.npmjs.com/package/@waelio/utils) | Shared utilities and UI helpers |
+| [`@waelio/ustore`](https://www.npmjs.com/package/@waelio/ustore) | Universal storage and state patterns |
+| [`@waelio/agent`](https://www.npmjs.com/package/@waelio/agent) | AI agent frontend toolkit |
+| [`@waelio/sync`](https://www.npmjs.com/package/@waelio/sync) | Real-time sync utilities |
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE) © [Waelio](https://waelio.com)
