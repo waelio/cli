@@ -184,10 +184,8 @@ async function handleApiRequest(
     requestUrl: URL,
 ): Promise<void> {
     if (request.method === "GET" && requestUrl.pathname === "/api/public-sites") {
-        // List all top-level directories in public-sites/
         try {
-            const entries = await readdir(publicSitesDir, { withFileTypes: true });
-            const sites = entries.filter(e => e.isDirectory()).map(e => e.name);
+            const sites = await listPublicSites(publicSitesDir);
             sendJson(response, 200, { sites });
         } catch (error) {
             sendJson(response, 500, { error: toErrorMessage(error) });
@@ -499,6 +497,28 @@ async function resolveUiAssetPath(pathname: string): Promise<string | null> {
 
     const indexFile = path.join(uiDistDir, "index.html");
     return (await pathExists(indexFile)) ? indexFile : null;
+}
+
+export async function listPublicSites(rootDirectory = publicSitesDir): Promise<string[]> {
+    const entries = await readdir(rootDirectory, { withFileTypes: true });
+    const candidates = entries.filter((entry) => entry.isDirectory());
+
+    const sites = await Promise.all(
+        candidates.map(async (entry) => {
+            const indexPath = path.join(rootDirectory, entry.name, "index.html");
+
+            try {
+                const details = await stat(indexPath);
+                return details.isFile() ? entry.name : null;
+            } catch {
+                return null;
+            }
+        }),
+    );
+
+    return sites
+        .filter((siteName): siteName is string => siteName !== null)
+        .sort((left, right) => left.localeCompare(right));
 }
 
 function buildOptionsFromSearchParams(searchParams: URLSearchParams): BuildSiteforgeOptions {
