@@ -10,8 +10,8 @@ const router = createRouter({
       component: ScaffoldView,
     },
     {
-      path: "/public",
-      name: "public",
+      path: "/public-sites",
+      name: "public-sites",
       component: () => import("../views/PublicSitesView.vue"),
     },
   ],

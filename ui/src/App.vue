@@ -29,13 +29,15 @@ onMounted(() => {
       <h1 class="app-title">waelio/cli</h1>
       <nav class="app-nav">
         <RouterLink to="/">Scaffold</RouterLink>
-        <RouterLink to="/public">Public Sites</RouterLink>
+        <RouterLink to="/public-sites">Public Sites</RouterLink>
       </nav>
     </div>
     <button
       type="button"
       class="theme-toggle"
-      :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
+      :aria-label="
+        theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
+      "
       @click="toggleTheme"
     >
       {{ theme === "light" ? "Dark" : "Light" }}

@@ -32,7 +32,11 @@ async function handlePublicSitesRequest(request: IncomingMessage, response: Serv
     }
 
     // Serve the file
-    response.writeHead(200, { "Content-Type": getContentType(filePath) });
+    response.writeHead(200, {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Content-Type": getContentType(filePath),
+        Pragma: "no-cache",
+    });
     createReadStream(filePath).pipe(response);
 }
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
@@ -141,8 +145,22 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
             return;
         }
 
-        // Serve static public sites
-        if (request.url && request.url.startsWith("/public-sites/")) {
+        if (
+            request.method === "GET"
+            && (
+                requestUrl.pathname === "/public"
+                || requestUrl.pathname === "/public/"
+                || requestUrl.pathname === "/publi-sites"
+                || requestUrl.pathname === "/publi-sites/"
+            )
+        ) {
+            response.writeHead(302, { Location: "/public-sites" });
+            response.end();
+            return;
+        }
+
+        // Serve static public sites for nested paths like /public-sites/<site>/...
+        if (/^\/public-sites\/[^/]+(?:\/.*)?$/.test(requestUrl.pathname)) {
             await handlePublicSitesRequest(request, response);
             return;
         }
@@ -264,7 +282,7 @@ async function handleApiRequest(
             return;
         }
 
-        const outRoot = normalizeString(payload.outRoot);
+        const outRoot = normalizeString(payload.outRoot) ?? publicSitesDir;
         const initGit = payload.initGit !== false;
 
         try {
@@ -379,9 +397,9 @@ async function handleWebhookBuild(request: IncomingMessage, response: ServerResp
 
     const payload = await readJsonBody(request);
     const options = normalizeBuildOptions(payload);
-    
-    const messagingUrl = isRecord(payload) && typeof payload.messagingUrl === "string" 
-        ? payload.messagingUrl 
+
+    const messagingUrl = isRecord(payload) && typeof payload.messagingUrl === "string"
+        ? payload.messagingUrl
         : "http://localhost:3030"; // Default FeathersJS/waelio-messaging port
 
     const socket = io(messagingUrl);
@@ -453,7 +471,9 @@ async function handleUiRequest(response: ServerResponse, pathname: string): Prom
 
     const fileContents = await readFile(assetPath);
     response.writeHead(200, {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
         "Content-Type": getContentType(assetPath),
+        Pragma: "no-cache",
     });
     response.end(fileContents);
 }
