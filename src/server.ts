@@ -47,6 +47,15 @@ interface ScaffoldPayloadResolution {
     error?: string;
 }
 
+type NegotiationRole = "prompt_a" | "prompt_b";
+
+interface NegotiateRequestOptions {
+    baseUrl?: string;
+    path: string;
+    method?: "GET" | "POST";
+    body?: unknown;
+}
+
 const helperRepositories: HelperRepository[] = [
     {
         name: "waelio/ustore",
@@ -357,6 +366,123 @@ async function handleApiRequest(
         return;
     }
 
+    if (request.method === "GET" && requestUrl.pathname === "/api/negotiate/health") {
+        const targetBaseUrl = normalizeNegotiationBaseUrl(requestUrl.searchParams.get("baseUrl"));
+        const payload = await requestNegotiationJson({
+            baseUrl: targetBaseUrl,
+            path: "/health",
+        });
+        sendJson(response, 200, payload);
+        return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/negotiate/kickoff") {
+        const payload = await readJsonBody(request);
+        if (!isRecord(payload)) {
+            sendJson(response, 400, { error: "Request body must be a JSON object." });
+            return;
+        }
+
+        const promptText = normalizeString(payload.promptText);
+        const goal = normalizeString(payload.goal);
+
+        if (!promptText || !goal) {
+            sendJson(response, 400, { error: "promptText and goal are required." });
+            return;
+        }
+
+        const targetBaseUrl = normalizeNegotiationBaseUrl(payload.baseUrl);
+
+        const result = await requestNegotiationJson({
+            baseUrl: targetBaseUrl,
+            path: "/sessions/kickoff",
+            method: "POST",
+            body: {
+                prompt_text: promptText,
+                goal,
+                current_blocker: normalizeString(payload.currentBlocker) ?? "none",
+                next_exact_step: normalizeString(payload.nextExactStep)
+                    ?? "Submit prompt_b via /sessions/{session_id}/prompts/prompt_b",
+                paste_ready_inputs: normalizeString(payload.pasteReadyInputs) ?? "",
+            },
+        });
+
+        sendJson(response, 200, result);
+        return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/negotiate/auth") {
+        const payload = await readJsonBody(request);
+        if (!isRecord(payload)) {
+            sendJson(response, 400, { error: "Request body must be a JSON object." });
+            return;
+        }
+
+        const sessionId = normalizeString(payload.sessionId);
+        const sharedSecret = normalizeString(payload.sharedSecret);
+        const promptText = normalizeString(payload.promptText);
+        const roleCandidate = normalizeString(payload.role);
+        const role: NegotiationRole | null = roleCandidate === "prompt_a" || roleCandidate === "prompt_b"
+            ? roleCandidate
+            : null;
+
+        if (!sessionId || !sharedSecret || !promptText || !role) {
+            sendJson(response, 400, {
+                error: "sessionId, role (prompt_a|prompt_b), sharedSecret, and promptText are required.",
+            });
+            return;
+        }
+
+        const targetBaseUrl = normalizeNegotiationBaseUrl(payload.baseUrl);
+
+        const result = await requestNegotiationJson({
+            baseUrl: targetBaseUrl,
+            path: `/sessions/${encodeURIComponent(sessionId)}/prompts/${role}`,
+            method: "POST",
+            body: {
+                shared_secret: sharedSecret,
+                prompt_text: promptText,
+            },
+        });
+
+        sendJson(response, 200, result);
+        return;
+    }
+
+    if (request.method === "GET" && requestUrl.pathname === "/api/negotiate/status") {
+        const sessionId = normalizeString(requestUrl.searchParams.get("sessionId"));
+        if (!sessionId) {
+            sendJson(response, 400, { error: "sessionId query parameter is required." });
+            return;
+        }
+
+        const targetBaseUrl = normalizeNegotiationBaseUrl(requestUrl.searchParams.get("baseUrl"));
+        const result = await requestNegotiationJson({
+            baseUrl: targetBaseUrl,
+            path: `/sessions/${encodeURIComponent(sessionId)}`,
+        });
+
+        sendJson(response, 200, result);
+        return;
+    }
+
+    if (request.method === "GET" && requestUrl.pathname === "/api/negotiate/handoff") {
+        const sessionId = normalizeString(requestUrl.searchParams.get("sessionId"));
+        if (!sessionId) {
+            sendJson(response, 400, { error: "sessionId query parameter is required." });
+            return;
+        }
+
+        const targetBaseUrl = normalizeNegotiationBaseUrl(requestUrl.searchParams.get("baseUrl"));
+        const result = await requestNegotiationJson({
+            baseUrl: targetBaseUrl,
+            path: `/sessions/${encodeURIComponent(sessionId)}/handoff`,
+        });
+
+        sendJson(response, 200, result);
+        return;
+    }
+
     sendJson(response, 404, {
         error: `Unknown API route: ${requestUrl.pathname}`,
     });
@@ -630,6 +756,33 @@ function normalizeBuildOptions(value: unknown): BuildSiteforgeOptions {
         workdir: normalizeString(value.workdir),
         dryRun: value.dryRun === true,
     };
+}
+
+function normalizeNegotiationBaseUrl(value: unknown): string {
+    return normalizeString(value) ?? "http://127.0.0.1:8000";
+}
+
+async function requestNegotiationJson(options: NegotiateRequestOptions): Promise<Record<string, unknown>> {
+    const targetBaseUrl = normalizeNegotiationBaseUrl(options.baseUrl).replace(/\/+$/, "");
+    const targetPath = options.path.startsWith("/") ? options.path : `/${options.path}`;
+    const targetUrl = `${targetBaseUrl}${targetPath}`;
+
+    const response = await fetch(targetUrl, {
+        method: options.method ?? "GET",
+        headers: { "Content-Type": "application/json" },
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+
+    if (!response.ok) {
+        const detail = typeof payload.detail === "string"
+            ? payload.detail
+            : `Negotiation API returned ${response.status}.`;
+        throw new Error(detail);
+    }
+
+    return payload;
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<unknown> {

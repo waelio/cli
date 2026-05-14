@@ -107,6 +107,7 @@ Open `http://localhost:3000` in your browser.
 |------|-------------|
 | **Scaffold** | Form-based generator to produce and deploy Siteforge blueprints |
 | **Public Sites** | Dashboard listing scaffolded client sites served via `/api/public-sites` |
+| **Negotiation** | Manage 2-AI negotiation sessions (kickoff, auth, status, handoff) via proxied API routes |
 
 ### `waelio scaffold <blueprint>`
 
@@ -240,6 +241,11 @@ directory = "./ui/dist"
 | `POST` | `/api/build` | Trigger a siteforge build |
 | `POST` | `/api/scaffold` | Scaffold from a blueprint |
 | `GET` | `/api/public-sites` | List scaffolded demo sites |
+| `GET` | `/api/negotiate/health` | Check negotiation service health |
+| `POST` | `/api/negotiate/kickoff` | Create session + authenticate prompt A + save handoff |
+| `POST` | `/api/negotiate/auth` | Authenticate prompt A or prompt B |
+| `GET` | `/api/negotiate/status?sessionId=...` | Fetch negotiation session status |
+| `GET` | `/api/negotiate/handoff?sessionId=...` | Fetch shared handoff markdown |
 
 ### Local Repository Discovery
 

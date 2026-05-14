@@ -14,6 +14,11 @@ const router = createRouter({
       name: "public-sites",
       component: () => import("../views/PublicSitesView.vue"),
     },
+    {
+      path: "/negotiation",
+      name: "negotiation",
+      component: () => import("../views/NegotiationView.vue"),
+    },
   ],
 });
 

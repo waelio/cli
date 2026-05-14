@@ -30,6 +30,7 @@ onMounted(() => {
       <nav class="app-nav">
         <RouterLink to="/">Scaffold</RouterLink>
         <RouterLink to="/public-sites">Public Sites</RouterLink>
+        <RouterLink to="/negotiation">Negotiation</RouterLink>
       </nav>
     </div>
     <button

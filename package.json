@@ -1,12 +1,12 @@
 {
     "name": "@waelio/cli",
-    "version": "0.1.11",
+    "version": "0.1.12",
     "description": "CLI for building the waelio/siteforge website",
     "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
     "homepage": "https://github.com/waelio/cli#readme",
     "repository": {
         "type": "git",
-        "url": "https://github.com/waelio/cli.git"
+        "url": "git+https://github.com/waelio/cli.git"
     },
     "bugs": {
         "url": "https://github.com/waelio/cli/issues"
