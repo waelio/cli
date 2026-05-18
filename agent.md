@@ -7,6 +7,7 @@ This agent serves as the autonomous assistant for the `@waelio/cli` repository. 
 ## Project Architecture
 
 - **Repository**: `@waelio/cli` (CLI for building the waelio/siteforge website)
+- **Live Website**: [https://cli.waelio.workers.dev/](https://cli.waelio.workers.dev/)
 - **Frontend/UI**: Vue 3 + Vite, Pinia, Vue Router (located in `ui/` directory, if present)
 - **Backend/CLI**: TypeScript Node.js CLI (Commander) + Webhook/Server listener
 - **Key Scripts**:
