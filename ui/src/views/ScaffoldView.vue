@@ -218,7 +218,7 @@ function downloadBlueprint(): void {
 
 const SITEFORGE_URL =
   (import.meta.env.VITE_SITEFORGE_URL as string | undefined) ??
-  "https://siteforge.wahbehw.workers.dev";
+  "https://siteforge.waelio.workers.dev";
 
 const SCAFFOLD_URL =
   (import.meta.env.VITE_SCAFFOLD_URL as string | undefined) ?? "/api/scaffold";
