@@ -180,7 +180,7 @@ async function handlePublicSitesRequest(request: IncomingMessage, response: Serv
 }
 
 export async function startServer(options: { port?: number } = {}): Promise<HttpServer> {
-    const port = options.port ?? Number(process.env.PORT ?? 3000);
+    const port = options.port ?? Number(process.env.PORT ?? 3011);
     const server = createServer((request, response) => {
         void handleRequest(request, response);
     });

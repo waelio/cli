@@ -18,7 +18,7 @@ This agent serves as the autonomous assistant for the `@waelio/cli` repository. 
 
 1. **Pipeline Automation**: Manage the Siteforge Deployment Pipeline, automating blueprint submissions to trigger the `@waelio/builder` scaffolding webhook.
 2. **UI Development**: Refine and extend the Vue 3 interface for blueprint submission and deployment visualization.
-3. **Backend Integration**: Ensure the CLI and Server seamlessly communicate with local (e.g., port 3000) and production builder webhooks.
+3. **Backend Integration**: Ensure the CLI and Server seamlessly communicate with local (e.g., port 3011) and production builder webhooks.
 4. **Access Control**: Implement and refine gating logic (e.g., HTTP 402/Blocked) to stage blueprints for approval and enforce future monetization models.
 5. **Code Quality**: Maintain strong TypeScript typing and comprehensive testing for all CLI components.
 

@@ -48,7 +48,7 @@ async function main(): Promise<void> {
     program
         .command("ui")
         .description("Start the local web UI and API server")
-        .option("--port <number>", "port for the local server", "3000")
+        .option("--port <number>", "port for the local server", "3011")
         .action(async (options: { port: string }) => {
             const { startServer } = await import("./server.js");
             const port = Number(options.port);

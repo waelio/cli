@@ -96,10 +96,10 @@ Start the local web UI and API server:
 
 ```sh
 waelio ui
-waelio ui --port 4000   # default: 3000
+waelio ui --port 4000   # default: 3011
 ```
 
-Open `http://localhost:3000` in your browser.
+Open `http://localhost:3011` in your browser.
 
 **UI Views:**
 
@@ -182,8 +182,8 @@ pnpm dev
 
 Starts concurrently:
 
-- **API server** on `http://localhost:3000`
-- **Vite UI** on `http://localhost:5173` (proxies `/api` → `:3000`)
+- **API server** on `http://localhost:3011`
+- **Vite UI** on `http://localhost:5173` (proxies `/api` → `:3011`)
 
 ### Build everything
 
