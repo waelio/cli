@@ -281,7 +281,9 @@ async function deployToSiteforge(): Promise<void> {
   buildResult.value = "";
   buildStatus.value = "sending";
 
-  const targetUrl = `${SITEFORGE_URL}/public-sites/`;
+  const targetUrl = (import.meta.env.VITE_SITEFORGE_WEBHOOK_URL as string | undefined) 
+    ?? `${SITEFORGE_URL}/public-sites/`;
+  
   logBuild(`POST webhook to ${targetUrl}`);
 
   try {
@@ -299,7 +301,7 @@ async function deployToSiteforge(): Promise<void> {
     const data = await res.json();
     buildResult.value = JSON.stringify(data, null, 2);
     buildStatus.value = "done";
-    logBuild(`Success! Live at: ${SITEFORGE_URL}${data.url}`);
+    logBuild(`Success! Live at: ${SITEFORGE_URL}${data.url || ''}`);
   } catch (err) {
     logBuild(`webhook network error: ${(err as Error).message}`);
     buildStatus.value = "error";
